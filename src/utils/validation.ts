@@ -1,0 +1,39 @@
+/**
+ * Validates first or last name.
+ * Allows Latin/Cyrillic letters and numbers, 2-30 characters.
+ */
+export const validateName = (name: string): boolean => {
+  const nameRegex = /^[a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]{2,30}$/;
+
+  return nameRegex.test(name);
+};
+
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+
+  return emailRegex.test(email) && !email.includes('..');
+};
+
+/**
+ * Validates password strength.
+ * - At least 8 characters
+ * - At least one digit
+ * - At least one lowercase letter
+ * - At least one uppercase letter
+ * - At least one special character
+ * - More than one unique character
+ */
+export const validatePassword = (password: string): boolean => {
+  if (password.length < 8) {
+    return false;
+  }
+
+  const hasDigit = /\d/.test(password);
+  const hasLowercase = /[a-zа-яё]/.test(password);
+  const hasUppercase = /[A-ZА-ЯЁ]/.test(password);
+  const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁ0-9]/.test(password);
+  const uniqueChars = new Set(password).size;
+  const hasUniqueChar = uniqueChars > 1;
+
+  return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
+};
