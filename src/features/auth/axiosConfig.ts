@@ -1,6 +1,6 @@
 import axios from 'axios';
-import {storage} from "./StorageService.ts";
-import {API_BASE_URL} from "../../app/api/baseApi.ts";
+import { storage } from './StorageService.ts';
+import { API_BASE_URL } from '../../app/api/baseApi.ts';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -21,33 +21,35 @@ const processQueue = (error, token = null) => {
 };
 
 api.interceptors.request.use(
-  (config) => {
+  config => {
     const token = storage.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
 
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({resolve, reject});
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        }).catch(err => {
-          return Promise.reject(err);
-        });
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
       }
 
       originalRequest._retry = true;
@@ -56,9 +58,9 @@ api.interceptors.response.use(
       try {
         const refreshToken = storage.getRefreshToken();
 
-        const response = await api.post('/auth/refresh', {refreshToken});
+        const response = await api.post('/auth/refresh', { refreshToken });
 
-        const {token, refreshToken: newRefreshToken} = response.data;
+        const { token, refreshToken: newRefreshToken } = response.data;
 
         storage.setTokens(token, newRefreshToken || refreshToken);
         api.defaults.headers.Authorization = `Bearer ${token}`;

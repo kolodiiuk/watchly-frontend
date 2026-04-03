@@ -1,14 +1,59 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-@theme {
-  --color-primary-500: #646cff;
-  --color-primary-600: #535bf2;
+@theme inline {
+  --color-background: var(--movie-background);
+  --color-background-alt: var(--movie-background-alt);
+  --color-surface: var(--movie-surface);
+  --color-surface-raised: var(--movie-surface-raised);
+  --color-border: var(--movie-border);
+  --color-text: var(--movie-text);
+  --color-muted: var(--movie-muted);
+  --color-primary: var(--movie-primary);
+  --color-primary-strong: var(--movie-primary-strong);
+  --color-accent: var(--movie-accent);
+  --color-accent-soft: var(--movie-accent-soft);
+  --color-success: var(--movie-success);
+  --color-warning: var(--movie-warning);
+  --color-danger: var(--movie-danger);
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+@layer base {
+  :root {
+    color-scheme: dark;
+    --movie-background: #07111d;
+    --movie-background-alt: #0c1726;
+    --movie-surface: #111a2d;
+    --movie-surface-raised: #17233b;
+    --movie-border: #26324b;
+    --movie-text: #edf2fb;
+    --movie-muted: #8b96ae;
+    --movie-primary: #f5c451;
+    --movie-primary-strong: #e4a62b;
+    --movie-accent: #63d7cf;
+    --movie-accent-soft: #219ebc;
+    --movie-success: #5dd39e;
+    --movie-warning: #f4b942;
+    --movie-danger: #ff6b6b;
+  }
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    background: var(--movie-background);
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(245, 196, 81, 0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(99, 215, 207, 0.12), transparent 26%),
+      linear-gradient(180deg, var(--movie-background), var(--movie-background-alt));
+    color: var(--movie-text);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
 }

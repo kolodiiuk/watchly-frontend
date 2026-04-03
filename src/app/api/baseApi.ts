@@ -1,5 +1,5 @@
-import {createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react';
-import {storage} from "../../features/auth/StorageService.ts";
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { storage } from '../../features/auth/StorageService.ts';
 
 export const API_BASE_URL = 'http://localhost:5171';
 
@@ -16,6 +16,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Wishlist", "Cart", "Products", "Orders"],
+  tagTypes: ['Wishlist', 'Cart', 'Products', 'Orders'],
   endpoints: () => ({}),
 });
