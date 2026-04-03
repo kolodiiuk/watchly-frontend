@@ -1,5 +1,6 @@
-﻿module.exports = {
+module.exports = {
   root: true,
+  ignorePatterns: ['dist'],
   env: {
     browser: true,
     es2021: true,
@@ -14,24 +15,19 @@
     },
   },
   plugins: ['@typescript-eslint', 'react', 'react-hooks'],
-  extends: [
-    'eslint:recommended',
-    'plugin:react/recommended',
-    'plugin:react-hooks/recommended',
-    'plugin:@typescript-eslint/recommended',
-    'prettier',
-  ],
+  extends: ['eslint:recommended', 'plugin:react/recommended', 'plugin:react-hooks/recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
   settings: {
     react: { version: 'detect' },
   },
   rules: {
-    // project-specific rules can go here
+    'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off',
   },
   overrides: [
     {
       files: ['*.ts', '*.tsx'],
       parserOptions: {
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.app.json'],
       },
     },
   ],

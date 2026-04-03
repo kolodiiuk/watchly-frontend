@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-
 class StorageService {
   private tokenKey: string;
   private refreshTokenKey: string;
@@ -21,27 +19,6 @@ class StorageService {
 
   getAccessToken() {
     return localStorage.getItem(this.tokenKey);
-  }
-
-  useAccessToken() {
-    const [token, setToken] = useState<string | null>(storage.getAccessToken());
-
-    useEffect(() => {
-      const handleChange = () => {
-        setToken(storage.getAccessToken());
-      };
-
-      // react to storage changes (cross-tab) and same-tab custom events
-      window.addEventListener('storage', handleChange);
-      window.addEventListener('tokenChanged', handleChange);
-
-      return () => {
-        window.removeEventListener('storage', handleChange);
-        window.removeEventListener('tokenChanged', handleChange);
-      };
-    }, []);
-
-    return token;
   }
 
   getRefreshToken() {
