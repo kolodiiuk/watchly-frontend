@@ -38,7 +38,6 @@ const formatRating = (rating?: number | null) => {
 };
 
 const detailItems = (titleInfo: TitleInfo) => [
-  { label: 'Title ID', value: String(titleInfo.id) },
   { label: 'Release date', value: formatReleaseDate(titleInfo.releaseDate) },
   { label: 'Runtime', value: formatRuntime(titleInfo.runtime) },
   { label: 'Average TMDB rating', value: formatRating(titleInfo.avgTmdbRating) },
@@ -148,8 +147,6 @@ export function MovieDetailsPage() {
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge tone="accent">Movie details</Badge>
-                <Badge tone="default">{formatRuntime(watchlistCandidate.runtime)}</Badge>
-                <Badge tone="warning">{formatRating(watchlistCandidate.avgTmdbRating)}</Badge>
               </div>
 
               <div className="space-y-4">
@@ -175,17 +172,11 @@ export function MovieDetailsPage() {
               </div>
 
               <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.24em] text-muted">Watchlist integration</p>
-                    <h2 className="mt-2 text-xl font-semibold text-text">Ready for add-to-watchlist wiring</h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                      This page now exposes a watchlist-ready title shape, so the next step can hook in list actions
-                      without reshaping the catalog response here.
-                    </p>
+                <div className="flex flex-col gap-4 sm:flex-column sm:items-left">
+                  <div className="space-y-4">
+                    <p className="text-sm uppercase tracking-[0.24em] text-muted">Status and actions</p>
                   </div>
-
-                  <Button variant="secondary" disabled className="disabled:cursor-not-allowed disabled:opacity-70">
+                  <Button style={{ maxWidth: '150px', width: '100%' }} variant="secondary" disabled className="disabled:cursor-not-allowed disabled:opacity-70" >
                     Add to watchlist
                   </Button>
                 </div>
