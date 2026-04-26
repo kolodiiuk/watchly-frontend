@@ -37,6 +37,10 @@ const formatRating = (rating?: number | null) => {
   return `${rating.toFixed(1)} / 10`;
 };
 
+const getFullImageUrl = (path: string, size: string) => {
+    return "https://image.tmdb.org/t/p/" + size + path; 
+}
+
 const detailItems = (titleInfo: TitleInfo) => [
   { label: 'Release date', value: formatReleaseDate(titleInfo.releaseDate) },
   { label: 'Runtime', value: formatRuntime(titleInfo.runtime) },
@@ -52,7 +56,7 @@ export function MovieDetailsPage() {
     skip: !hasValidTitleId,
   });
 
-  const watchlistCandidate = useMemo<TitleInfo | null>(() => {
+  const title = useMemo<TitleInfo | null>(() => {
     if (!titleInfo) return null;
 
     return {
@@ -107,7 +111,7 @@ export function MovieDetailsPage() {
     );
   }
 
-  if (isError || !watchlistCandidate) {
+  if (isError || !title) {
     return (
       <main className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
@@ -131,10 +135,10 @@ export function MovieDetailsPage() {
 
           <div className="relative grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="overflow-hidden rounded-3xl border border-white/10 bg-background/45">
-              {watchlistCandidate.posterUrl ? (
+              {title.posterUrl ? (
                 <img
-                  src={watchlistCandidate.posterUrl}
-                  alt={`${watchlistCandidate.name} poster`}
+                  src={getFullImageUrl(title.posterUrl, "w500")}
+                  alt={`${title.name} poster`}
                   className="aspect-[2/3] h-full w-full object-cover"
                 />
               ) : (
@@ -146,24 +150,24 @@ export function MovieDetailsPage() {
 
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
-                <Badge tone="accent">Movie details</Badge>
+                <Badge tone="accent">Movie</Badge>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog title</p>
                   <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
-                    {watchlistCandidate.name}
+                    {title.name}
                   </h1>
                 </div>
 
                 <p className="max-w-3xl text-sm leading-7 text-muted">
-                  {watchlistCandidate.overview?.trim() || 'Overview not available for this title yet.'}
+                  {title.overview?.trim() || 'Overview not available for this title yet.'}
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {detailItems(watchlistCandidate).map(item => (
+                {detailItems(title).map(item => (
                   <div key={item.label} className="rounded-2xl border border-border/80 bg-background/35 p-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">{item.label}</div>
                     <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
