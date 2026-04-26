@@ -10,7 +10,7 @@ const appNavClass = ({ isActive }: { isActive: boolean }) =>
   ].join(' ');
 
 export function UserLayout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, role } = useAuth();
 
   return (
     <div className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-10">
@@ -42,11 +42,11 @@ export function UserLayout() {
           <div className="mt-2 font-semibold text-text">{user?.displayName}</div>
           <div className="text-sm text-muted">{user?.email}</div>
           <Badge className="mt-3" tone="accent">
-            {user?.role}
+            {role ?? user?.userRoles?.[0] ?? 'unknown'}
           </Badge>
         </div>
 
-        <Button className="mt-4 w-full" variant="secondary" onClick={signOut}>
+        <Button className="mt-4 w-full" variant="secondary" onClick={() => void signOut()}>
           Sign out
         </Button>
       </aside>

@@ -12,6 +12,9 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function MainLayout() {
   const { user, signOut } = useAuth();
+  const handleSignOut = () => {
+    void signOut();
+  };
 
   return (
     <div className="min-h-screen">
@@ -33,16 +36,16 @@ export function MainLayout() {
             <NavLink to="/watchlist" className={navLinkClass}>
               Watchlist
             </NavLink>
-            <NavLink to="/profile" className={navLinkClass}>
-              Profile
-            </NavLink>
           </nav>
 
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <Badge tone="accent">{user.displayName}</Badge>
-                <Button variant="secondary" onClick={signOut}>
+                <Badge tone="accent">{user.userName}</Badge>
+                <NavLink to="/profile" className={navLinkClass}>
+                  Profile
+                </NavLink>
+                <Button variant="secondary" onClick={handleSignOut}>
                   Sign out
                 </Button>
               </>

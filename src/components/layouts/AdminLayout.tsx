@@ -11,7 +11,7 @@ const adminNavClass = ({ isActive }: { isActive: boolean }) =>
   ].join(' ');
 
 export function AdminLayout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, role } = useAuth();
 
   return (
     <div className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-10">
@@ -42,11 +42,11 @@ export function AdminLayout() {
           <div className="text-xs uppercase tracking-[0.24em] text-muted">Signed in as</div>
           <div className="mt-2 font-semibold text-text">{user?.displayName}</div>
           <Badge className="mt-3" tone="warning">
-            {user?.role === UserRole.ADMIN ? 'admin' : 'unknown'}
+            {role === UserRole.ADMINISTRATOR ? 'admin' : 'unknown'}
           </Badge>
         </div>
 
-        <Button className="mt-4 w-full" variant="secondary" onClick={signOut}>
+        <Button className="mt-4 w-full" variant="secondary" onClick={() => void signOut()}>
           Sign out
         </Button>
       </aside>

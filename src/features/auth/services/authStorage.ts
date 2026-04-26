@@ -1,89 +1,133 @@
-import { isUserRole, UserRole } from '../../../app/models/UserRole.ts';
-import type { User } from '../../../app/models/User.ts';
+const ACCESS_TOKEN_COOKIE_KEY = 'watchly_access_token';
+const REFRESH_TOKEN_COOKIE_KEY = 'watchly_refresh_token';
+const ROLE_COOKIE_KEY = 'watchly_role';
+const USER_COOKIE_KEY = 'watchly_user';
 
-const CURRENT_USER_KEY = 'watchly_current_user';
-export const AUTH_STORAGE_EVENT = 'watchly-auth-changed';
-
-function canUseStorage() {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+function canUseCookies() {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
-function readJson<T>(key: string): T | null {
-  if (!canUseStorage()) {
+function getCookieOptions() {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+  return `; Path=/; SameSite=Strict${secure ? '; Secure' : ''}`;
+}
+
+function readCookie(name: string): string | null {
+  if (!canUseCookies()) {
     return null;
   }
 
-  const raw = window.localStorage.getItem(key);
-  if (!raw) {
+  const cookie = document.cookie.split('; ').find(entry => entry.startsWith(`${encodeURIComponent(name)}=`));
+
+  if (!cookie) {
     return null;
   }
+
+  const value = cookie.slice(cookie.indexOf('=') + 1);
 
   try {
-    return JSON.parse(raw) as T;
+    return decodeURIComponent(value);
   } catch {
-    window.localStorage.removeItem(key);
-    return null;
+    return value;
   }
 }
 
-function writeJson(key: string, value: unknown) {
-  if (!canUseStorage()) {
+function writeCookie(name: string, value: string) {
+  if (!canUseCookies()) {
     return;
   }
 
-  window.localStorage.setItem(key, JSON.stringify(value));
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}${getCookieOptions()}`;
 }
 
-function emitAuthChange() {
-  if (!canUseStorage()) {
+function clearCookie(name: string) {
+  if (!canUseCookies()) {
     return;
   }
 
-  window.dispatchEvent(new Event(AUTH_STORAGE_EVENT));
+  document.cookie = `${encodeURIComponent(name)}=; Max-Age=0${getCookieOptions()}`;
 }
 
-export function getStoredUser(): User | null {
-  const storedUser = readJson<Partial<User> & { role?: string }>(CURRENT_USER_KEY);
-  if (!storedUser) {
-    return null;
-  }
+export const authStorage = {
+  getAccessToken(): string | null {
+    return readCookie(ACCESS_TOKEN_COOKIE_KEY);
+  },
 
-  if (!storedUser.id || !storedUser.email || !storedUser.displayName || !storedUser.role) {
-    return null;
-  }
+  setAccessToken(token: string | null): void {
+    if (!token) {
+      clearCookie(ACCESS_TOKEN_COOKIE_KEY);
+      return;
+    }
 
-  if (!isUserRole(storedUser.role)) {
-    return null;
-  }
+    writeCookie(ACCESS_TOKEN_COOKIE_KEY, token);
+  },
 
-  return {
-    id: storedUser.id,
-    email: storedUser.email,
-    displayName: storedUser.displayName,
-    role: storedUser.role,
-    avatarUrl: storedUser.avatarUrl ?? null,
-  };
-}
+  getRefreshToken(): string | null {
+    return readCookie(REFRESH_TOKEN_COOKIE_KEY);
+  },
 
-export function setStoredUser(user: User) {
-  writeJson(CURRENT_USER_KEY, user);
-  emitAuthChange();
-}
+  setRefreshToken(token: string | null): void {
+    if (!token) {
+      clearCookie(REFRESH_TOKEN_COOKIE_KEY);
+      return;
+    }
 
-export function clearStoredUser() {
-  if (!canUseStorage()) {
-    return;
-  }
+    writeCookie(REFRESH_TOKEN_COOKIE_KEY, token);
+  },
 
-  window.localStorage.removeItem(CURRENT_USER_KEY);
-  emitAuthChange();
-}
+  getRole(): string | null {
+    return readCookie(ROLE_COOKIE_KEY);
+  },
 
-export function createDemoUser(email: string, displayName: string, role: UserRole = UserRole.USER): User {
-  return {
-    id: `${role}-${Date.now()}`,
-    email,
-    displayName,
-    role,
-  };
-}
+  setRole(role: string | null): void {
+    if (!role) {
+      clearCookie(ROLE_COOKIE_KEY);
+      return;
+    }
+
+    writeCookie(ROLE_COOKIE_KEY, role);
+  },
+
+  clearRole(): void {
+    clearCookie(ROLE_COOKIE_KEY);
+  },
+
+  getUser<T>(): T | null {
+    const raw = readCookie(USER_COOKIE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      clearCookie(USER_COOKIE_KEY);
+      return null;
+    }
+  },
+
+  setUser(user: unknown | null): void {
+    if (!user) {
+      clearCookie(USER_COOKIE_KEY);
+      return;
+    }
+
+    writeCookie(USER_COOKIE_KEY, JSON.stringify(user));
+  },
+
+  clearUser(): void {
+    clearCookie(USER_COOKIE_KEY);
+  },
+
+  clearTokens(): void {
+    clearCookie(ACCESS_TOKEN_COOKIE_KEY);
+    clearCookie(REFRESH_TOKEN_COOKIE_KEY);
+  },
+
+  clearAll(): void {
+    this.clearTokens();
+    this.clearRole();
+    this.clearUser();
+  },
+};

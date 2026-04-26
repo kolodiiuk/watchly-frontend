@@ -3,7 +3,7 @@ import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -19,7 +19,7 @@ export function ProfilePage() {
             <div className="mt-2 text-2xl font-semibold text-text">{user?.displayName}</div>
             <div className="text-sm text-muted">{user?.email}</div>
           </div>
-          <Badge tone="accent">{user?.role}</Badge>
+          <Badge tone="accent">{role ?? user?.userRoles?.[0] ?? 'unknown'}</Badge>
         </div>
       </Card>
     </div>

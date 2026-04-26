@@ -1,55 +1,53 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useCallback } from 'react';
 import type { PropsWithChildren } from 'react';
 import type { User } from '../../../app/models/User.ts';
-import { AUTH_STORAGE_EVENT, clearStoredUser, getStoredUser, setStoredUser } from './authStorage.ts';
+import { useSignOutMutation } from '../../../app/api/authApi.ts';
+import { clearCredentials, initializeAuth } from './authSlice.ts';
+import { authStorage } from './authStorage.ts';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '../../../app/store.ts';
 
 type AuthContextValue = {
   user: User | null;
+  role: string | null;
   isAuthenticated: boolean;
-  signIn: (user: User) => void;
-  signUp: (user: User) => void;
-  signOut: () => void;
-  refreshUser: () => void;
+  refreshUser: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(() => getStoredUser());
+  const dispatch = useDispatch<AppDispatch>();
+  const [signOutMutation] = useSignOutMutation();
 
-  useEffect(() => {
-    const syncUser = () => setUser(getStoredUser());
+  const authState = useSelector((state: RootState) => state.auth);
+  const { user: authUser, role, isAuthenticated } = authState;
 
-    window.addEventListener('storage', syncUser);
-    window.addEventListener(AUTH_STORAGE_EVENT, syncUser);
+  const refreshUser = useCallback(async () => {
+    await dispatch(initializeAuth()).unwrap();
+  }, [dispatch]);
 
-    return () => {
-      window.removeEventListener('storage', syncUser);
-      window.removeEventListener(AUTH_STORAGE_EVENT, syncUser);
-    };
-  }, []);
+  const signOut = useCallback(async () => {
+    try {
+      const refreshToken = authStorage.getRefreshToken();
+      if (refreshToken) {
+        await signOutMutation({ refreshToken }).unwrap();
+      }
+    } finally {
+      dispatch(clearCredentials());
+    }
+  }, [dispatch, signOutMutation]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      isAuthenticated: user !== null,
-      signIn: nextUser => {
-        setStoredUser(nextUser);
-        setUser(nextUser);
-      },
-      signUp: nextUser => {
-        setStoredUser(nextUser);
-        setUser(nextUser);
-      },
-      signOut: () => {
-        clearStoredUser();
-        setUser(null);
-      },
-      refreshUser: () => {
-        setUser(getStoredUser());
-      },
+      user: authUser as User | null,
+      role,
+      isAuthenticated,
+      refreshUser,
+      signOut,
     }),
-    [user]
+    [authUser, role, isAuthenticated, refreshUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

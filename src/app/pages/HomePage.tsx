@@ -128,8 +128,7 @@ export function HomePage() {
               {watchlist.map(movie => (
                 <div
                   key={movie.title}
-                  className="flex flex-col gap-2 bg-background/25 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
+                  className="flex flex-col gap-2 bg-background/25 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-text">{movie.title}</div>
                     <div className="text-sm text-muted">{movie.meta}</div>

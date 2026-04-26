@@ -1,55 +1,48 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Badge } from '../../../components/ui/Badge.tsx';
 import { Button } from '../../../components/ui/Button.tsx';
 import { Card } from '../../../components/ui/Card.tsx';
-import { useAuth } from '../services/AuthProvider.tsx';
-import { createDemoUser } from '../services/authStorage.ts';
+import { type SignUpRequest, useSignUpMutation } from '../../../app/api/authApi.ts';
 
 export function SignUpPage() {
-  const { signUp } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState('Jane');
   const [email, setEmail] = useState('jane@example.com');
   const [password, setPassword] = useState('Password1');
   const [error, setError] = useState<string | null>(null);
+  const [signUp] = useSignUpMutation();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    if (!displayName.trim() || !email.trim() || !password.trim()) {
-      setError('Display name, email, and password are required.');
+    if (!email.trim() || !password.trim()) {
+      setError('Email and password are required.');
       return;
     }
 
-    signUp(createDemoUser(email.trim(), displayName.trim()));
-    navigate('/dashboard', { replace: true });
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    await signUp({
+      email: trimmedEmail,
+      password: trimmedPassword,
+    } as SignUpRequest)
+      .unwrap()
+      .then(() => setTimeout(() => navigate('/auth/sign-in'), 1500))
+      .catch((_: Error) => {
+        setError('An error occurred');
+      });
   };
 
   return (
     <Card tone="raised">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-center gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-muted">Sign up</p>
           <h1 className="mt-2 text-3xl font-semibold text-text">Create your account</h1>
         </div>
-        <Badge tone="success">Local session</Badge>
       </div>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        <label className="block space-y-2">
-          <span className="text-sm text-muted">Display name</span>
-          <input
-            className="w-full rounded-2xl border border-border bg-background/60 px-4 py-3 text-text outline-none ring-0 focus:border-primary"
-            type="text"
-            value={displayName}
-            onChange={event => setDisplayName(event.target.value)}
-            autoComplete="name"
-          />
-        </label>
-
         <label className="block space-y-2">
           <span className="text-sm text-muted">Email</span>
           <input
@@ -74,15 +67,19 @@ export function SignUpPage() {
 
         {error ? <p className="text-sm text-danger">{error}</p> : null}
 
-        <Button type="submit">Create account</Button>
+        <div className="flex justify-center">
+          <Button type="submit">Create account</Button>
+        </div>
       </form>
 
-      <p className="mt-6 text-sm text-muted">
-        Already have an account?{' '}
-        <Link className="text-accent hover:underline" to="/auth/sign-in">
-          Sign in
-        </Link>
-      </p>
+      <div className="flex justify-center">
+        <p className="mt-6 text-sm text-muted">
+          Already have an account?{' '}
+          <Link className="text-accent hover:underline" to="/auth/sign-in">
+            Sign in
+          </Link>
+        </p>
+      </div>
     </Card>
   );
 }

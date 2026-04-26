@@ -1,9 +1,9 @@
-import type { UserRole } from './UserRole';
-
 export type User = {
   id: string;
   email: string;
-  displayName: string;
-  role: UserRole;
-  avatarUrl?: string | null;
+  displayName?: string | null;
+  userName?: string | null;
+  userRoles: string[];
+  profilePicture?: string | null;
+  role?: string | null;
 };
