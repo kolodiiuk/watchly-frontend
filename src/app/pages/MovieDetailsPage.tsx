@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useGetTitleQuery, type TitleInfo } from '../api/catalogApi';
+import { WatchStatus } from '../models/watchStatus';
 
 const formatReleaseDate = (value?: string | null) => {
   if (!value) return 'Release date not available';
@@ -47,14 +48,30 @@ const detailItems = (titleInfo: TitleInfo) => [
   { label: 'Average TMDB rating', value: formatRating(titleInfo.avgTmdbRating) },
 ];
 
+const watchStatusOptions = [
+  { value: WatchStatus.PlanToWatch, label: 'Plan to watch' },
+  { value: WatchStatus.Watching, label: 'Watching' },
+  { value: WatchStatus.Completed, label: 'Completed' },
+  { value: WatchStatus.Dropped, label: 'Dropped' },
+];
+
 export function MovieDetailsPage() {
   const { titleId: titleIdParam } = useParams<{ titleId: string }>();
   const titleId = Number(titleIdParam);
   const hasValidTitleId = Number.isInteger(titleId) && titleId > 0;
-
+ const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch)       
   const { data: titleInfo, isLoading, isError } = useGetTitleQuery(titleId, {
     skip: !hasValidTitleId,
   });
+
+  const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) => {
+  };
+
+  const onWatchStatusSelect = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextStatus = Number(event.target.value) as WatchStatus;
+    setSelectedWatchStatus(nextStatus);
+    handleWatchStatusChange(titleId, nextStatus);
+  };
 
   const title = useMemo<TitleInfo | null>(() => {
     if (!titleInfo) return null;
@@ -150,7 +167,7 @@ export function MovieDetailsPage() {
 
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
-                <Badge tone="accent">Movie</Badge>
+                <Badge tone="accent">Movie details</Badge>
               </div>
 
               <div className="space-y-4">
@@ -178,8 +195,21 @@ export function MovieDetailsPage() {
               <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
                 <div className="flex flex-col gap-4 sm:flex-column sm:items-left">
                   <div className="space-y-4">
-                    <p className="text-sm uppercase tracking-[0.24em] text-muted">Status and actions</p>
-                  </div>
+                    <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>                  
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.2em] text-muted">Watch status</span>
+                      <select
+                        value={selectedWatchStatus}
+                        onChange={onWatchStatusSelect}
+                        className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30">
+                        {watchStatusOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                 </div>
                   <Button style={{ maxWidth: '150px', width: '100%' }} variant="secondary" disabled className="disabled:cursor-not-allowed disabled:opacity-70" >
                     Add to watchlist
                   </Button>
