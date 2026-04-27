@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { useParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useGetTitleQuery, type TitleInfo } from '../api/catalogApi';
 import {
+  commentApi,
   useDeleteCommentMutation,
   useGetCommentsByTitleQuery,
   useLeaveCommentMutation,
   useUpdateCommentMutation,
 } from '../api/commentApi';
 import { WatchStatus } from '../models/WatchStatus';
+import type { AppDispatch } from '../store.ts';
 
 const formatReleaseDate = (value?: string | null) => {
   if (!value) return 'Release date not available';
@@ -96,6 +99,7 @@ const watchStatusOptions = [
 ];
 
 export function MovieDetailsPage() {
+  const dispatch = useDispatch<AppDispatch>();
   const { titleId: titleIdParam } = useParams<{ titleId: string }>();
   const titleId = Number(titleIdParam);
   const hasValidTitleId = Number.isInteger(titleId) && titleId > 0;
@@ -129,7 +133,6 @@ export function MovieDetailsPage() {
   useEffect(() => {
     if (!ownComment) {
       setCommentDraft('');
-      setIsEditingOwnComment(false);
       return;
     }
 
@@ -147,9 +150,12 @@ export function MovieDetailsPage() {
     handleWatchStatusChange(titleId, nextStatus);
   };
 
-  const handleCommentSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCommentSubmit = async () => {
     setCommentError(null);
+
+    if (ownComment && !isEditingOwnComment) {
+      return;
+    }
 
     const trimmedComment = commentDraft.trim();
     if (!trimmedComment) {
@@ -163,6 +169,16 @@ export function MovieDetailsPage() {
           commentId: ownComment.id,
           text: trimmedComment,
         }).unwrap();
+        dispatch(
+          commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft => {
+            const commentToUpdate = draft.find(comment => comment.id === ownComment.id);
+            if (!commentToUpdate) return;
+
+            commentToUpdate.text = trimmedComment;
+            commentToUpdate.updatedAt = new Date().toISOString();
+          })
+        );
+        setCommentDraft(trimmedComment);
         setIsEditingOwnComment(false);
       } else {
         await leaveComment({
@@ -172,7 +188,7 @@ export function MovieDetailsPage() {
         }).unwrap();
       }
 
-      await refetchComments();
+    void refetchComments();
     } catch {
       setCommentError('We could not save your comment right now.');
     }
@@ -196,9 +212,14 @@ export function MovieDetailsPage() {
     setCommentError(null);
     try {
       await deleteComment(ownComment.id).unwrap();
+      dispatch(
+        commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft =>
+          draft.filter(comment => comment.id !== ownComment.id)
+        )
+      );
       setCommentDraft('');
       setIsEditingOwnComment(false);
-      await refetchComments();
+      void refetchComments();
     } catch {
       setCommentError('We could not delete your comment right now.');
     }
@@ -404,7 +425,10 @@ export function MovieDetailsPage() {
                     {ownComment ? (
                       isEditingOwnComment ? (
                         <>
-                          <Button type="submit" disabled={isCommentMutationLoading}>
+                          <Button 
+                            type="button" 
+                            disabled={isCommentMutationLoading}
+                            onClick={handleCommentSubmit}>
                             Save changes
                           </Button>
                           <Button
@@ -430,7 +454,7 @@ export function MovieDetailsPage() {
                         </>
                       )
                     ) : (
-                      <Button type="submit" disabled={isCommentMutationLoading}>
+                      <Button type = "submit" onClick={handleCommentSubmit}  disabled={isCommentMutationLoading}>
                         Leave comment
                       </Button>
                     )}
