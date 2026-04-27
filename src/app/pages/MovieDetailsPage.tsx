@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type SubmitEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
@@ -107,6 +107,7 @@ export function MovieDetailsPage() {
   const [commentDraft, setCommentDraft] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isEditingOwnComment, setIsEditingOwnComment] = useState(false);
+  const [selectedOwnCommentId, setSelectedOwnCommentId] = useState<number | null>(null);
   const { user, isAuthenticated } = useAuth();
 
   const { data: titleInfo, isLoading, isError } = useGetTitleQuery(titleId, {
@@ -125,21 +126,70 @@ export function MovieDetailsPage() {
   const [updateComment, { isLoading: isUpdatingComment }] = useUpdateCommentMutation();
   const [deleteComment, { isLoading: isDeletingComment }] = useDeleteCommentMutation();
 
-  const ownComment = useMemo(() => {
+  const sortedComments = useMemo(() => {
+    const currentUserId = user?.id;
+
+    return [...comments].sort((left, right) => {
+      const leftIsOwn = left.userId === currentUserId;
+      const rightIsOwn = right.userId === currentUserId;
+
+      if (leftIsOwn !== rightIsOwn) {
+        return leftIsOwn ? -1 : 1;
+      }
+
+      const leftTime = new Date(left.updatedAt).getTime();
+      const rightTime = new Date(right.updatedAt).getTime();
+
+      if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+        return right.id - left.id;
+      }
+
+      return rightTime - leftTime;
+    });
+  }, [comments, user?.id]);
+
+  const ownComments = useMemo(() => {
     if (!user) return null;
-    return comments.find(comment => comment.userId === user.id) ?? null;
-  }, [comments, user]);
+    return sortedComments.filter(comment => comment.userId === user.id);
+  }, [sortedComments, user]);
+
+  const selectedOwnComment = useMemo(() => {
+    if (!ownComments?.length) return null;
+    if (selectedOwnCommentId === null) return null;
+
+    return ownComments.find(comment => comment.id === selectedOwnCommentId) ?? ownComments[0];
+  }, [ownComments, selectedOwnCommentId]);
 
   useEffect(() => {
-    if (!ownComment) {
+    if (!ownComments?.length) {
+      setSelectedOwnCommentId(null);
       setCommentDraft('');
+      setIsEditingOwnComment(false);
       return;
     }
 
-    if (!isEditingOwnComment) {
-      setCommentDraft(ownComment.text);
+    if (selectedOwnCommentId === null) {
+      return;
     }
-  }, [ownComment, isEditingOwnComment]);
+
+    const hasSelectedComment = ownComments.some(comment => comment.id === selectedOwnCommentId);
+    if (!hasSelectedComment) {
+      setSelectedOwnCommentId(ownComments[0].id);
+    }
+  }, [ownComments, selectedOwnCommentId]);
+
+  useEffect(() => {
+    if (isEditingOwnComment) {
+      return;
+    }
+
+    if (selectedOwnComment) {
+      setCommentDraft(selectedOwnComment.text);
+      return;
+    }
+
+    setCommentDraft('');
+  }, [selectedOwnComment, isEditingOwnComment]);
 
   const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) => {
   };
@@ -153,7 +203,7 @@ export function MovieDetailsPage() {
   const handleCommentSubmit = async () => {
     setCommentError(null);
 
-    if (ownComment && !isEditingOwnComment) {
+    if (selectedOwnComment && !isEditingOwnComment) {
       return;
     }
 
@@ -164,14 +214,14 @@ export function MovieDetailsPage() {
     }
 
     try {
-      if (ownComment) {
+      if (selectedOwnComment) {
         await updateComment({
-          commentId: ownComment.id,
+          commentId: selectedOwnComment.id,
           text: trimmedComment,
         }).unwrap();
         dispatch(
           commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft => {
-            const commentToUpdate = draft.find(comment => comment.id === ownComment.id);
+            const commentToUpdate = draft.find(comment => comment.id === selectedOwnComment.id);
             if (!commentToUpdate) return;
 
             commentToUpdate.text = trimmedComment;
@@ -186,38 +236,62 @@ export function MovieDetailsPage() {
           text: trimmedComment,
           isTitle: true,
         }).unwrap();
+        setCommentDraft('');
       }
 
-    void refetchComments();
+      void refetchComments();
     } catch {
       setCommentError('We could not save your comment right now.');
     }
   };
 
-  const handleEditOwnComment = () => {
+  const handleStartNewComment = () => {
     setCommentError(null);
-    setCommentDraft(ownComment?.text ?? '');
+    setSelectedOwnCommentId(null);
+    setCommentDraft('');
+    setIsEditingOwnComment(false);
+  };
+
+  const handleSelectOwnComment = (direction: 'previous' | 'next') => {
+    if (!ownComments?.length || isEditingOwnComment) return;
+
+    const currentIndex = selectedOwnComment
+      ? ownComments.findIndex(comment => comment.id === selectedOwnComment.id)
+      : 0;
+    const offset = direction === 'previous' ? -1 : 1;
+    const nextIndex = (currentIndex + offset + ownComments.length) % ownComments.length;
+
+    setCommentError(null);
+    setSelectedOwnCommentId(ownComments[nextIndex].id);
+  };
+
+  const handleEditOwnComment = () => {
+    if (!selectedOwnComment) return;
+
+    setCommentError(null);
+    setCommentDraft(selectedOwnComment.text);
     setIsEditingOwnComment(true);
   };
 
   const handleCancelEdit = () => {
     setCommentError(null);
-    setCommentDraft(ownComment?.text ?? '');
+    setCommentDraft(selectedOwnComment?.text ?? '');
     setIsEditingOwnComment(false);
   };
 
   const handleDeleteOwnComment = async () => {
-    if (!ownComment) return;
+    if (!selectedOwnComment) return;
 
     setCommentError(null);
     try {
-      await deleteComment(ownComment.id).unwrap();
+      await deleteComment(selectedOwnComment.id).unwrap();
       dispatch(
         commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft =>
-          draft.filter(comment => comment.id !== ownComment.id)
+          draft.filter(comment => comment.id !== selectedOwnComment.id)
         )
       );
       setCommentDraft('');
+      setSelectedOwnCommentId(null);
       setIsEditingOwnComment(false);
       void refetchComments();
     } catch {
@@ -226,6 +300,10 @@ export function MovieDetailsPage() {
   };
 
   const isCommentMutationLoading = isLeavingComment || isUpdatingComment || isDeletingComment;
+  const selectedOwnCommentIndex = selectedOwnComment
+    ? ownComments?.findIndex(comment => comment.id === selectedOwnComment.id) ?? -1
+    : -1;
+  const isCreatingNewComment = selectedOwnComment === null;
 
   const title = useMemo<TitleInfo | null>(() => {
     if (!titleInfo) return null;
@@ -392,17 +470,66 @@ export function MovieDetailsPage() {
                 className="rounded-3xl border border-border/80 bg-background/25 p-5"
                 onSubmit={handleCommentSubmit}>
                 <div className="flex flex-col gap-4">
+                  {ownComments?.length ? (
+                    <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted">Your comments</div>
+                          <p className="mt-2 text-sm leading-6 text-muted">
+                            Your comments stay pinned to the top of the discussion. Pick one to revise, or start a new
+                            note.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant={isCreatingNewComment ? 'primary' : 'secondary'}
+                            onClick={handleStartNewComment}
+                            disabled={isCommentMutationLoading || isEditingOwnComment}>
+                            New comment
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleSelectOwnComment('previous')}
+                            disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 1}>
+                            Previous
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleSelectOwnComment('next')}
+                            disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 1}>
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <Badge tone="accent">{ownComments.length} of your comments</Badge>
+                        {!isCreatingNewComment && selectedOwnCommentIndex >= 0 ? (
+                          <Badge tone="default">
+                            {selectedOwnCommentIndex + 1} / {ownComments.length}
+                          </Badge>
+                        ) : (
+                          <Badge tone="default">New draft</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">
-                      {ownComment && !isEditingOwnComment
-                        ? 'Your comment'
-                        : ownComment
-                          ? 'Edit your comment'
+                      {selectedOwnComment && !isEditingOwnComment
+                        ? 'Selected comment'
+                        : selectedOwnComment
+                          ? 'Edit selected comment'
                           : 'Leave a comment'}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      {ownComment && !isEditingOwnComment
-                        ? 'You can revise or remove your comment here.'
+                      {selectedOwnComment && !isEditingOwnComment
+                        ? 'Cycle through your comments, then revise or remove the one you want.'
                         : 'Share a quick reaction for other Watchly users.'}
                     </p>
                   </div>
@@ -412,7 +539,7 @@ export function MovieDetailsPage() {
                     <textarea
                       value={commentDraft}
                       onChange={event => setCommentDraft(event.target.value)}
-                      disabled={Boolean(ownComment) && !isEditingOwnComment}
+                      disabled={Boolean(selectedOwnComment) && !isEditingOwnComment}
                       rows={4}
                       placeholder="Write your thoughts about this movie."
                       className="w-full resize-none rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm text-text outline-none ring-0 transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
@@ -422,13 +549,10 @@ export function MovieDetailsPage() {
                   {commentError ? <p className="text-sm text-danger">{commentError}</p> : null}
 
                   <div className="flex flex-wrap gap-3">
-                    {ownComment ? (
+                    {selectedOwnComment ? (
                       isEditingOwnComment ? (
                         <>
-                          <Button 
-                            type="button" 
-                            disabled={isCommentMutationLoading}
-                            onClick={handleCommentSubmit}>
+                          <Button type="button" onClick={handleCommentSubmit} disabled={isCommentMutationLoading}>
                             Save changes
                           </Button>
                           <Button
@@ -454,7 +578,7 @@ export function MovieDetailsPage() {
                         </>
                       )
                     ) : (
-                      <Button type = "submit" onClick={handleCommentSubmit}  disabled={isCommentMutationLoading}>
+                      <Button type="submit"onClick={handleCommentSubmit} disabled={isCommentMutationLoading}>
                         Leave comment
                       </Button>
                     )}
@@ -477,8 +601,8 @@ export function MovieDetailsPage() {
                 <div className="rounded-3xl border border-danger/30 bg-danger/5 p-5 text-sm text-danger">
                   We could not load comments for this title right now.
                 </div>
-              ) : comments.length ? (
-                comments.map(comment => {
+              ) : sortedComments.length ? (
+                sortedComments.map(comment => {
                   const isOwnComment = comment.userId === user?.id;
                   const authorName = getCommentAuthorName(comment, user?.id);
 
