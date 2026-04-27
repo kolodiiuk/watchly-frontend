@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
@@ -97,6 +97,15 @@ const watchStatusOptions = [
   { value: WatchStatus.Completed, label: 'Completed' },
   { value: WatchStatus.Dropped, label: 'Dropped' },
 ];
+
+function PenIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20h4l10-10a2.121 2.121 0 1 0-3-3L5 17v3Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
 
 export function MovieDetailsPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -265,11 +274,28 @@ export function MovieDetailsPage() {
     setSelectedOwnCommentId(ownComments[nextIndex].id);
   };
 
+  const handleSelectExistingComment = () => {
+    if (!ownComments?.length || isEditingOwnComment) return;
+
+    setCommentError(null);
+    setSelectedOwnCommentId(ownComments[0].id);
+  };
+
   const handleEditOwnComment = () => {
     if (!selectedOwnComment) return;
 
     setCommentError(null);
     setCommentDraft(selectedOwnComment.text);
+    setIsEditingOwnComment(true);
+  };
+
+  const handleJumpToEditComment = (commentId: number) => {
+    const commentToEdit = ownComments?.find(comment => comment.id === commentId);
+    if (!commentToEdit) return;
+
+    setCommentError(null);
+    setSelectedOwnCommentId(commentToEdit.id);
+    setCommentDraft(commentToEdit.text);
     setIsEditingOwnComment(true);
   };
 
@@ -468,7 +494,7 @@ export function MovieDetailsPage() {
             {isAuthenticated ? (
               <form
                 className="rounded-3xl border border-border/80 bg-background/25 p-5"
-                onSubmit={handleCommentSubmit}>
+                onSubmit={event => event.preventDefault()}>
                 <div className="flex flex-col gap-4">
                   {ownComments?.length ? (
                     <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
@@ -489,20 +515,32 @@ export function MovieDetailsPage() {
                             disabled={isCommentMutationLoading || isEditingOwnComment}>
                             New comment
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => handleSelectOwnComment('previous')}
-                            disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 1}>
-                            Previous
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => handleSelectOwnComment('next')}
-                            disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 1}>
-                            Next
-                          </Button>
+                          {isCreatingNewComment ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={handleSelectExistingComment}
+                              disabled={isCommentMutationLoading || isEditingOwnComment}>
+                              Edit existing
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => handleSelectOwnComment('previous')}
+                                disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 2}>
+                                Previous
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => handleSelectOwnComment('next')}
+                                disabled={isCommentMutationLoading || isEditingOwnComment || ownComments.length < 2}>
+                                Next
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -578,7 +616,7 @@ export function MovieDetailsPage() {
                         </>
                       )
                     ) : (
-                      <Button type="submit"onClick={handleCommentSubmit} disabled={isCommentMutationLoading}>
+                      <Button type="button" onClick={handleCommentSubmit} disabled={isCommentMutationLoading}>
                         Leave comment
                       </Button>
                     )}
@@ -605,19 +643,39 @@ export function MovieDetailsPage() {
                 sortedComments.map(comment => {
                   const isOwnComment = comment.userId === user?.id;
                   const authorName = getCommentAuthorName(comment, user?.id);
+                  const isSelectedOwnComment = selectedOwnCommentId === comment.id;
 
                   return (
                     <article
                       key={comment.id}
-                      className="rounded-3xl border border-border/80 bg-background/25 p-5">
+                      className={[
+                        'rounded-3xl border bg-background/25 p-5 transition-colors',
+                        isSelectedOwnComment
+                          ? 'border-primary/80 bg-primary/5 shadow-[0_0_0_1px_rgba(245,196,81,0.18)]'
+                          : 'border-border/80',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-lg font-semibold text-text">{authorName}</h3>
                             {isOwnComment ? <Badge tone="accent">You</Badge> : null}
+                            {isSelectedOwnComment ? <Badge tone="warning">Selected</Badge> : null}
                           </div>
                           <p className="mt-1 text-sm text-muted">{formatCommentDate(comment.updatedAt)}</p>
                         </div>
+                        {isOwnComment ? (
+                          <button
+                            type="button"
+                            aria-label="Edit this comment"
+                            title="Edit this comment"
+                            onClick={() => handleJumpToEditComment(comment.id)}
+                            disabled={isCommentMutationLoading}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-background/55 text-muted transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-text disabled:cursor-not-allowed disabled:opacity-60">
+                            <PenIcon />
+                          </button>
+                        ) : null}
                       </div>
                       <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-text">{comment.text}</p>
                     </article>
