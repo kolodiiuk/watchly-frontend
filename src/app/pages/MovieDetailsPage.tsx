@@ -13,6 +13,7 @@ import {
   useLeaveCommentMutation,
   useUpdateCommentMutation,
 } from '../api/commentApi';
+import { useVoteTitleMutation } from '../api/voteApi';
 import { WatchStatus } from '../models/WatchStatus';
 import type { AppDispatch } from '../store.ts';
 
@@ -89,6 +90,7 @@ const detailItems = (titleInfo: TitleInfo) => [
   { label: 'Release date', value: formatReleaseDate(titleInfo.releaseDate) },
   { label: 'Runtime', value: formatRuntime(titleInfo.runtime) },
   { label: 'Average TMDB rating', value: formatRating(titleInfo.avgTmdbRating) },
+  { label: 'Average Watchly rating', value: formatRating(10) },
 ];
 
 const watchStatusOptions = [
@@ -113,6 +115,10 @@ export function MovieDetailsPage() {
   const titleId = Number(titleIdParam);
   const hasValidTitleId = Number.isInteger(titleId) && titleId > 0;
   const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch);
+  const [selectedVoteValue, setSelectedVoteValue] = useState(8);
+  const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
+  const [voteError, setVoteError] = useState<string | null>(null);
+  const [voteMessage, setVoteMessage] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isEditingOwnComment, setIsEditingOwnComment] = useState(false);
@@ -134,6 +140,7 @@ export function MovieDetailsPage() {
   const [leaveComment, { isLoading: isLeavingComment }] = useLeaveCommentMutation();
   const [updateComment, { isLoading: isUpdatingComment }] = useUpdateCommentMutation();
   const [deleteComment, { isLoading: isDeletingComment }] = useDeleteCommentMutation();
+  const [voteTitle, { isLoading: isSubmittingVote }] = useVoteTitleMutation();
 
   const sortedComments = useMemo(() => {
     const currentUserId = user?.id;
@@ -207,6 +214,38 @@ export function MovieDetailsPage() {
     const nextStatus = Number(event.target.value) as WatchStatus;
     setSelectedWatchStatus(nextStatus);
     handleWatchStatusChange(titleId, nextStatus);
+  };
+
+  const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSelectedVoteValue(Number(event.target.value));
+    setVoteError(null);
+    setVoteMessage(null);
+  };
+
+  const handleVoteSubmit = async () => {
+    setVoteError(null);
+    setVoteMessage(null);
+
+    if (!isAuthenticated) {
+      setVoteError('Please sign in to rate this title.');
+      return;
+    }
+
+    if (hasSubmittedVote) {
+      setVoteError('Changing an existing vote needs vote lookup support from the current API.');
+      return;
+    }
+
+    try {
+      await voteTitle({
+        titleId,
+        value: selectedVoteValue,
+      }).unwrap();
+      setHasSubmittedVote(true);
+      setVoteMessage(`Your rating of ${selectedVoteValue}/10 has been submitted.`);
+    } catch {
+      setVoteError('We could not submit your vote right now.');
+    }
   };
 
   const handleCommentSubmit = async () => {
@@ -296,7 +335,6 @@ export function MovieDetailsPage() {
     setCommentError(null);
     setSelectedOwnCommentId(commentToEdit.id);
     setCommentDraft(commentToEdit.text);
-    setIsEditingOwnComment(true);
   };
 
   const handleCancelEdit = () => {
@@ -467,6 +505,42 @@ export function MovieDetailsPage() {
                         ))}
                       </select>
                     </label>
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
+                        <select
+                          value={selectedVoteValue}
+                          onChange={onVoteValueSelect}
+                          disabled={!isAuthenticated || isSubmittingVote}
+                          className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70">
+                          {Array.from({ length: 10 }, (_, index) => index + 1).map(value => (
+                            <option key={value} value={value}>
+                              {value} / 10
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <Button
+                        type="button"
+                        onClick={handleVoteSubmit}
+                        disabled={isSubmittingVote || !isAuthenticated}
+                        className="lg:min-w-[150px]">
+                        {hasSubmittedVote ? 'Change vote' : 'Submit vote'}
+                      </Button>
+                    </div>
+                    {voteError ? <p className="text-sm text-danger">{voteError}</p> : null}
+                    {voteMessage ? <p className="text-sm text-success">{voteMessage}</p> : null}
+                    {hasSubmittedVote ? (
+                      <p className="text-sm leading-6 text-muted">
+                        The current API accepts a new title vote, but it does not return or expose your existing
+                        `voteId`, so safe vote changes need backend support first.
+                      </p>
+                    ) : (
+                      <p className="text-sm leading-6 text-muted">
+                        Rate this title on a 1 to 10 scale. Your rating is separate from the TMDB average above.
+                      </p>
+                    )}
                   </div>
                   <Button
                     style={{ maxWidth: '150px', width: '100%' }}
