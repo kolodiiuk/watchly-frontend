@@ -404,8 +404,8 @@ export function MovieDetailsPage() {
       <main className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <Card tone="raised" className="animate-pulse">
-            <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-              <div className="aspect-[2/3] rounded-3xl bg-background/60" />
+            <div className="grid gap-6 lg:grid-cols-[500px_minmax(0,1fr)]">
+              <div className="rounded-3xl bg-background/60" />
               <div className="space-y-4">
                 <div className="h-4 w-28 rounded-full bg-background/60" />
                 <div className="h-10 w-3/4 rounded-2xl bg-background/60" />
@@ -446,16 +446,16 @@ export function MovieDetailsPage() {
         <Card tone="glass" className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,196,81,0.14),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(99,215,207,0.12),_transparent_34%)]" />
 
-          <div className="relative grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="relative grid gap-6 lg:grid-cols-[500px_minmax(0,1fr)]">
             <div className="overflow-hidden rounded-3xl border border-white/10 bg-background/45">
               {title.posterUrl ? (
                 <img
                   src={getFullImageUrl(title.posterUrl, 'w500')}
                   alt={`${title.name} poster`}
-                  className="aspect-[2/3] h-full w-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex aspect-[2/3] items-center justify-center bg-background/60 p-6 text-center text-sm text-muted">
+                <div className="flex items-center justify-center bg-background/60 p-6 text-center text-sm text-muted">
                   Poster unavailable
                 </div>
               )}
@@ -555,9 +555,10 @@ export function MovieDetailsPage() {
           </div>
         </Card>
 
-        <Card tone="glass">
-          <div className="space-y-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <Card tone="glass" className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(245,196,81,0.1),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(99,215,207,0.1),_transparent_36%),linear-gradient(180deg,_rgba(255,255,255,0.02),_transparent_28%)]" />
+          <div className="relative space-y-6 gap-2">
+            <div className="flex flex-col">
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-muted">Comments</p>
                 <h2 className="mt-2 text-2xl font-semibold text-text">What people are saying</h2>
