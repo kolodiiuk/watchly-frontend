@@ -123,6 +123,8 @@ export function MovieDetailsPage() {
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isEditingOwnComment, setIsEditingOwnComment] = useState(false);
   const [selectedOwnCommentId, setSelectedOwnCommentId] = useState<number | null>(null);
+  const [assistantPrompt, setAssistantPrompt] = useState('');
+  const [includeOwnCommentsInAssistantSearch, setIncludeOwnCommentsInAssistantSearch] = useState(true);
   const { user, isAuthenticated } = useAuth();
 
   const { data: titleInfo, isLoading, isError } = useGetTitleQuery(titleId, {
@@ -210,6 +212,9 @@ export function MovieDetailsPage() {
   const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) => {
   };
 
+  const handleAssistantCommentSearch = (_prompt: string, _includeOwnComments: boolean) => {
+  };
+
   const onWatchStatusSelect = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextStatus = Number(event.target.value) as WatchStatus;
     setSelectedWatchStatus(nextStatus);
@@ -220,6 +225,15 @@ export function MovieDetailsPage() {
     setSelectedVoteValue(Number(event.target.value));
     setVoteError(null);
     setVoteMessage(null);
+  };
+
+  const handleAssistantSearchSubmit = () => {
+    const trimmedPrompt = assistantPrompt.trim();
+    if (!trimmedPrompt) {
+      return;
+    }
+
+    handleAssistantCommentSearch(trimmedPrompt, includeOwnCommentsInAssistantSearch);
   };
 
   const handleVoteSubmit = async () => {
@@ -565,6 +579,60 @@ export function MovieDetailsPage() {
               </div>
               <Badge tone="default">{comments.length} comment{comments.length === 1 ? '' : 's'}</Badge>
             </div>
+
+            <section className="overflow-hidden rounded-3xl border border-primary/35 bg-[linear-gradient(135deg,rgba(245,196,81,0.12),rgba(99,215,207,0.08))] shadow-[0_0_0_1px_rgba(245,196,81,0.08)]">
+              <div className="rounded-t-[inherit] border-b border-primary/20 bg-background/30 px-5 py-4 backdrop-blur-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-accent">AI comment search</p>
+                    <h3 className="mt-2 text-xl font-semibold text-text">Find the most relevant reactions</h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                      Ask the assistant to surface comments that match a topic, mood, spoiler concern, or specific
+                      question.
+                    </p>
+                  </div>
+                  <Badge tone="accent">Preview tool</Badge>
+                </div>
+              </div>
+
+              <div className="rounded-b-[inherit] space-y-4 bg-background/20 p-5">
+                <div className="rounded-2xl border border-primary/20 bg-background/35 px-4 py-3 text-sm leading-6 text-muted">
+                  This panel is reserved for future assistant-powered comment discovery and works separately from
+                  writing or editing your own comment.
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">Prompt</span>
+                    <input
+                      type="text"
+                      value={assistantPrompt}
+                      onChange={event => setAssistantPrompt(event.target.value)}
+                      placeholder="Example: Find comments about pacing and the ending."
+                      className="mt-2 w-full rounded-2xl border border-primary/20 bg-background/70 px-4 py-3 text-sm text-text outline-none ring-0 transition-colors focus:border-primary"
+                    />
+                  </label>
+
+                  <Button
+                    type="button"
+                    onClick={handleAssistantSearchSubmit}
+                    disabled={!assistantPrompt.trim()}
+                    className="lg:min-w-[160px]">
+                    Search comments
+                  </Button>
+                </div>
+
+                <label className="inline-flex items-center gap-3 text-sm text-text">
+                  <input
+                    type="checkbox"
+                    checked={includeOwnCommentsInAssistantSearch}
+                    onChange={event => setIncludeOwnCommentsInAssistantSearch(event.target.checked)}
+                    className="h-4 w-4 rounded border border-primary/30 bg-background/60 text-primary focus:ring-2 focus:ring-primary/30"
+                  />
+                  <span>Include my comments in the assistant search</span>
+                </label>
+              </div>
+            </section>
 
             {isAuthenticated ? (
               <form
