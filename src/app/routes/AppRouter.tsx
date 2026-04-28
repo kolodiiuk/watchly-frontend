@@ -7,7 +7,7 @@ import { NotFoundPage } from '../../shared/NotFoundPage.tsx';
 import { ProfilePage } from '../pages/ProfilePage';
 import { SignInPage } from '../../features/auth/pages/SignInPage.tsx';
 import { SignUpPage } from '../../features/auth/pages/SignUpPage.tsx';
-import { MovieDetailsPage } from '../pages/MovieDetailsPage';
+import { MovieDetailsPage } from '../pages/TitlePage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -22,7 +22,7 @@ const router = createBrowserRouter([
         element: <BrowsePage />,
       },
       {
-        path: 'movies/:titleId',
+        path: 'title/:titleId',
         element: <MovieDetailsPage />,
       },
       {

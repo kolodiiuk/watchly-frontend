@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { useGetTitleQuery, type TitleInfo } from '../api/catalogApi';
+import { Badge } from '../../components/ui/Badge.tsx';
+import { Button } from '../../components/ui/Button.tsx';
+import { Card } from '../../components/ui/Card.tsx';
+import { useGetTitleQuery, type TitleInfo } from '../api/catalogApi.ts';
 import {
   commentApi,
   useDeleteCommentMutation,
   useGetCommentsByTitleQuery,
   useLeaveCommentMutation,
   useUpdateCommentMutation,
-} from '../api/commentApi';
-import { useVoteTitleMutation } from '../api/voteApi';
-import { WatchStatus } from '../models/WatchStatus';
+} from '../api/commentApi.ts';
+import { useVoteTitleMutation } from '../api/voteApi.ts';
+import { WatchStatus } from '../models/WatchStatus.ts';
 import type { AppDispatch } from '../store.ts';
 
 const formatReleaseDate = (value?: string | null) => {
