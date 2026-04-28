@@ -4,7 +4,7 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import { BrowsePage } from '../pages/BrowsePage';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../../shared/NotFoundPage.tsx';
-import { ProfilePage } from '../pages/ProfilePage';
+import { ProfilePage } from '../../features/profile/pages/ProfilePage';
 import { SignInPage } from '../../features/auth/pages/SignInPage.tsx';
 import { SignUpPage } from '../../features/auth/pages/SignUpPage.tsx';
 
@@ -47,6 +47,14 @@ const router = createBrowserRouter([
         path: 'profile',
         element: <ProfilePage />,
       },
+      // {
+      //   path: 'wathlists',
+      //   element:
+      // },
+      // {
+      //   path: 'stats',
+      //   element:
+      // }
     ],
   },
   // {

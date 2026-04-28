@@ -103,6 +103,14 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       authStorage.clearAll();
     },
+    setNewUserName(state: AuthState, action: PayloadAction<string>) {
+      if (state.user === null) {
+        return;
+      }
+
+      state.user.userName = action.payload;
+      authStorage.setUser(state.user);
+    }
   },
   extraReducers: builder => {
     builder
@@ -139,5 +147,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearCredentials } = authSlice.actions;
+export const { setCredentials, clearCredentials, setNewUserName } = authSlice.actions;
 export default authSlice.reducer;
