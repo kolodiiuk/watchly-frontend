@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useDispatch } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
@@ -141,10 +141,19 @@ const movieDetailItems = (titleInfo: TitleInfo) => [
 ];
 
 const episodeDetailItems = (episodeInfo: EpisodeInfo) => [
-  { label: 'Season', value: `Season ${episodeInfo.seasonId}` },
-  { label: 'Episode', value: `Episode ${episodeInfo.episodeId}` },
-  { label: 'Parent title id', value: `${episodeInfo.season.titleId}` },
-  { label: 'Average Watchly rating', value: formatRating(10) },
+  { label: 'Title', value: episodeInfo.season.titleName },
+  {
+    label: 'Season',
+    value: episodeInfo.season.name?.trim() || `Season ${episodeInfo.season.ordinalNumber}`,
+  },
+  {
+    label: 'Episode',
+    value: episodeInfo.name?.trim() || `Episode ${episodeInfo.ordinalNumber}`,
+  },
+  {
+    label: 'Average Watchly rating',
+    value: `${formatGenericRating(episodeInfo.avgVote)} (${formatVoteCount(episodeInfo.voteCount)})`,
+  },
 ];
 
 const watchStatusOptions = [
@@ -153,6 +162,16 @@ const watchStatusOptions = [
   { value: WatchStatus.Completed, label: 'Completed' },
   { value: WatchStatus.Dropped, label: 'Dropped' },
 ];
+
+function TitleLink({ titleId, titleName }: { titleId: number; titleName: string }) {
+  return (
+    <Link
+      to={`/title/${titleId}`}
+      className="text-accent transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
+      {titleName}
+    </Link>
+  );
+}
 
 function PenIcon() {
   return (
@@ -163,7 +182,7 @@ function PenIcon() {
   );
 }
 
-export function MovieDetailsPage() {
+export function TitlePage() {
   const dispatch = useDispatch<AppDispatch>();
   const { titleId: titleIdParam, episodeId: episodeIdParam } = useParams<{
     titleId?: string;
@@ -797,82 +816,114 @@ export function MovieDetailsPage() {
           <Card tone="glass" className="relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,215,207,0.14),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(245,196,81,0.1),_transparent_34%)]" />
 
-            <div className="relative flex flex-col gap-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge tone="accent">Episode details</Badge>
-                <Badge tone="default">Title {episodeInfo.season.titleId}</Badge>
+            <div className="relative grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-background/45">
+                {episodeInfo.posterUrl ? (
+                  <img
+                    src={getFullImageUrl(episodeInfo.posterUrl, 'w500')}
+                    alt={`${episodeInfo.name?.trim() || `Episode ${episodeInfo.ordinalNumber}`} poster`}
+                    className="aspect-[0.72/1] h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-[0.72/1] items-center justify-center bg-background/60 p-6 text-center text-sm text-muted">
+                    Episode poster unavailable
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog episode</p>
-                  <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
-                    Season {episodeInfo.seasonId}, Episode {episodeInfo.episodeId}
-                  </h1>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge tone="accent">Episode details</Badge>
+                  <Badge tone="default">Season {episodeInfo.season.ordinalNumber}</Badge>
                 </div>
 
-                <p className="max-w-3xl text-sm leading-7 text-muted">
-                  This episode view uses episode-oriented data and discussion. Parent title id: {episodeInfo.season.titleId}.
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {episodeDetailItems(episodeInfo).map(item => (
-                  <div key={item.label} className="rounded-2xl border border-border/80 bg-background/35 p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted">{item.label}</div>
-                    <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog episode</p>
+                    <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
+                      {episodeInfo.name?.trim() || `Episode ${episodeInfo.ordinalNumber}`}
+                    </h1>
                   </div>
-                ))}
-              </div>
 
-              <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
-                <div className="flex flex-col gap-4">
-                  <div className="space-y-4">
-                    <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => handleMarkEpisodeAsWatched(contentId)}
-                      style={{ maxWidth: '180px', width: '100%' }}>
-                      Mark as watched
-                    </Button>
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                      <label className="block">
-                        <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
-                        <select
-                          value={selectedVoteValue}
-                          onChange={onVoteValueSelect}
-                          disabled={!isAuthenticated || isSubmittingVote}
-                          className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70">
-                          {Array.from({ length: 10 }, (_, index) => index + 1).map(value => (
-                            <option key={value} value={value}>
-                              {value} / 10
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                  <p className="max-w-3xl text-sm leading-7 text-muted">
+                  </p>
+                </div>
 
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Title</div>
+                    <div className="mt-2 text-lg font-semibold">
+                      <TitleLink titleId={episodeInfo.season.titleId} titleName={episodeInfo.season.titleName} />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Season</div>
+                    <div className="mt-2 text-lg font-semibold">
+                      <TitleLink
+                        titleId={episodeInfo.season.titleId}
+                        titleName={episodeInfo.season.name?.trim() || `Season ${episodeInfo.season.ordinalNumber}`}
+                      />
+                    </div>
+                  </div>
+                  {episodeDetailItems(episodeInfo)
+                    .filter(item => item.label !== 'Title' && item.label !== 'Season')
+                    .map(item => (
+                      <div key={item.label} className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                        <div className="text-xs uppercase tracking-[0.2em] text-muted">{item.label}</div>
+                        <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
+                      </div>
+                    ))}
+                </div>
+
+                <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="space-y-4">
+                      <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
                       <Button
                         type="button"
-                        onClick={handleVoteSubmit}
-                        disabled={isSubmittingVote || !isAuthenticated}
-                        className="lg:min-w-[150px]">
-                        {hasSubmittedVote ? 'Change vote' : 'Submit vote'}
+                        variant="secondary"
+                        onClick={() => handleMarkEpisodeAsWatched(contentId)}
+                        style={{ maxWidth: '180px', width: '100%' }}>
+                        Mark as watched
                       </Button>
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                        <label className="block">
+                          <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
+                          <select
+                            value={selectedVoteValue}
+                            onChange={onVoteValueSelect}
+                            disabled={!isAuthenticated || isSubmittingVote}
+                            className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70">
+                            {Array.from({ length: 10 }, (_, index) => index + 1).map(value => (
+                              <option key={value} value={value}>
+                                {value} / 10
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <Button
+                          type="button"
+                          onClick={handleVoteSubmit}
+                          disabled={isSubmittingVote || !isAuthenticated}
+                          className="lg:min-w-[150px]">
+                          {hasSubmittedVote ? 'Change vote' : 'Submit vote'}
+                        </Button>
+                      </div>
+                      {voteError ? <p className="text-sm text-danger">{voteError}</p> : null}
+                      {voteMessage ? <p className="text-sm text-success">{voteMessage}</p> : null}
+                      {hasSubmittedVote ? (
+                        <p className="text-sm leading-6 text-muted">
+                          The current API accepts a new episode vote, but it does not return or expose your existing
+                          `voteId`, so safe vote changes need backend support first.
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-6 text-muted">
+                          Rate this episode on a 1 to 10 scale. This episode score is tracked separately from title-wide
+                          sentiment.
+                        </p>
+                      )}
                     </div>
-                    {voteError ? <p className="text-sm text-danger">{voteError}</p> : null}
-                    {voteMessage ? <p className="text-sm text-success">{voteMessage}</p> : null}
-                    {hasSubmittedVote ? (
-                      <p className="text-sm leading-6 text-muted">
-                        The current API accepts a new episode vote, but it does not return or expose your existing
-                        `voteId`, so safe vote changes need backend support first.
-                      </p>
-                    ) : (
-                      <p className="text-sm leading-6 text-muted">
-                        Rate this episode on a 1 to 10 scale. This episode score is tracked separately from title-wide
-                        sentiment.
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
