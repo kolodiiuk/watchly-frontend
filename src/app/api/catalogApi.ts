@@ -40,13 +40,44 @@ export interface TitleInfo {
   voteCount: number;
   productionCompanies: ProductionCompany[];
   genres: Genre[];
+  seasons: SeasonInfo[];
   spokenLanguages: SpokenLanguage[];
 }
  
 export interface EpisodeInfo {
-  titleId: number;
-  seasonId: number;
-  episodeId: number;
+  episodeId: number,
+  seasonId: number,
+  ordinalNumber: number,
+  runtime: number,
+  name: string,
+  posterUrl: string,
+  season: SeasonShortInfo,
+  avgVote: number,
+  voteCount: number
+}
+
+export interface EpisodeShortInfo {
+  episodeId: number,
+  runtime: number,
+  name: string,
+  avgVote: number,
+}
+
+export interface SeasonInfo {
+ seasonId: number,
+ ordinalNumber: number,
+ name: string,
+ titleId: number,
+ titleName: string,
+ episodes: EpisodeShortInfo[]
+}
+
+export interface SeasonShortInfo {
+  seasonId: number,
+  ordinalNumber: number,
+  name: string,
+  titleId: number,
+  titleName: string
 }
 
 export interface SearchParams {

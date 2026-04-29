@@ -143,7 +143,7 @@ const movieDetailItems = (titleInfo: TitleInfo) => [
 const episodeDetailItems = (episodeInfo: EpisodeInfo) => [
   { label: 'Season', value: `Season ${episodeInfo.seasonId}` },
   { label: 'Episode', value: `Episode ${episodeInfo.episodeId}` },
-  { label: 'Parent title id', value: `${episodeInfo.titleId}` },
+  { label: 'Parent title id', value: `${episodeInfo.season.titleId}` },
   { label: 'Average Watchly rating', value: formatRating(10) },
 ];
 
@@ -800,7 +800,7 @@ export function MovieDetailsPage() {
             <div className="relative flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge tone="accent">Episode details</Badge>
-                <Badge tone="default">Title {episodeInfo.titleId}</Badge>
+                <Badge tone="default">Title {episodeInfo.season.titleId}</Badge>
               </div>
 
               <div className="space-y-4">
@@ -812,7 +812,7 @@ export function MovieDetailsPage() {
                 </div>
 
                 <p className="max-w-3xl text-sm leading-7 text-muted">
-                  This episode view uses episode-oriented data and discussion. Parent title id: {episodeInfo.titleId}.
+                  This episode view uses episode-oriented data and discussion. Parent title id: {episodeInfo.season.titleId}.
                 </p>
               </div>
 
