@@ -1,6 +1,6 @@
 export const ContentType = {
-  Movie: 0,
-  Episode: 1,
+  Episode: 0,
+  Movie: 1,
 } as const;
 
 export type ContentType =
