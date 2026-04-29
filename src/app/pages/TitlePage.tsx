@@ -5,6 +5,7 @@ import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { Card } from '../../components/ui/Card.tsx';
+import { TitleType } from '../models/TitleType.tsx';
 import {
   type EpisodeInfo,
   type TitleInfo,
@@ -55,6 +56,43 @@ const formatRating = (rating?: number | null) => {
   return `${rating.toFixed(1)} / 10`;
 };
 
+const formatGenericRating = (rating?: number | null) => {
+  if (rating === null || rating === undefined) return 'not available';
+  return `${rating.toFixed(1)} / 10`;
+};
+
+const formatVoteCount = (voteCount?: number | null) => {
+  if (voteCount === null || voteCount === undefined) return 'No votes yet';
+  if (voteCount === 1) return '1 vote';
+  return `${voteCount} votes`;
+};
+
+const formatTextOrUnavailable = (value?: string | null) => {
+  if (!value || !value.trim()) return 'not available';
+  return value.trim();
+};
+
+const splitDisplayValues = (value?: string | null) => {
+  if (!value || !value.trim()) return [];
+
+  return value
+    .split(', ')
+    .map(item => item.trim())
+    .filter(Boolean);
+};
+
+const mapNamedItems = (items?: Array<{ name: string }>) => {
+  if (!items?.length) return [];
+
+  return items
+    .map(item => item.name?.trim())
+    .filter((item): item is string => Boolean(item));
+};
+
+const formatTitleType = (titleType: TitleType) => {
+  return titleType === TitleType.Movie ? 'Movie' : 'Series';
+};
+
 const formatCommentDate = (value: string) => {
   const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
@@ -96,7 +134,10 @@ const movieDetailItems = (titleInfo: TitleInfo) => [
   { label: 'Release date', value: formatReleaseDate(titleInfo.releaseDate) },
   { label: 'Runtime', value: formatRuntime(titleInfo.runtime) },
   { label: 'Average TMDB rating', value: formatRating(titleInfo.avgTmdbRating) },
-  { label: 'Average Watchly rating', value: formatRating(10) },
+  {
+    label: 'Average Watchly rating',
+    value: `${formatGenericRating(titleInfo.avgVote)} (${formatVoteCount(titleInfo.voteCount)})`,
+  },
 ];
 
 const episodeDetailItems = (episodeInfo: EpisodeInfo) => [
@@ -466,6 +507,11 @@ export function MovieDetailsPage() {
     : -1;
   const isCreatingNewComment = selectedOwnComment === null;
   const contentLabel = isEpisodeRoute ? 'episode' : 'movie';
+  const castMembers = splitDisplayValues(titleInfo?.actors);
+  const localizationLanguages = splitDisplayValues(titleInfo?.localizationLanguages);
+  const genres = mapNamedItems(titleInfo?.genres);
+  const spokenLanguages = mapNamedItems(titleInfo?.spokenLanguages);
+  const productionCompanies = mapNamedItems(titleInfo?.productionCompanies);
 
   if (!hasValidContentId) {
     return (
@@ -561,10 +607,11 @@ export function MovieDetailsPage() {
                     <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
                       {titleInfo.name}
                     </h1>
+                    <p className="mt-3 text-base italic text-muted">{formatTextOrUnavailable(titleInfo.tagline)}</p>
                   </div>
 
                   <p className="max-w-3xl text-sm leading-7 text-muted">
-                    {titleInfo.overview?.trim() || 'Overview not available for this title yet.'}
+                    {formatTextOrUnavailable(titleInfo.overview)}
                   </p>
                 </div>
 
@@ -575,6 +622,107 @@ export function MovieDetailsPage() {
                       <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
                     </div>
                   ))}
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Director</div>
+                    <div className="mt-2 text-lg font-semibold text-text">
+                      {formatTextOrUnavailable(titleInfo.director)}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Type</div>
+                    <div className="mt-2 text-lg font-semibold text-text">
+                      {formatTitleType(titleInfo.titleType)}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4 lg:col-span-2">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Actors</div>
+                    {castMembers.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {castMembers.map(actor => (
+                          <span
+                            key={actor}
+                            className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">
+                            {actor}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-lg font-semibold text-text">not available</div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Localization languages</div>
+                    {localizationLanguages.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {localizationLanguages.map(language => (
+                          <span
+                            key={language}
+                            className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">
+                            {language}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-lg font-semibold text-text">not available</div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Spoken languages</div>
+                    {spokenLanguages.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {spokenLanguages.map(language => (
+                          <span
+                            key={language}
+                            className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">
+                            {language}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-lg font-semibold text-text">not available</div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Genres</div>
+                    {genres.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {genres.map(genre => (
+                          <span
+                            key={genre}
+                            className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-lg font-semibold text-text">not available</div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted">Production companies</div>
+                    {productionCompanies.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {productionCompanies.map(company => (
+                          <span
+                            key={company}
+                            className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">
+                            {company}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-lg font-semibold text-text">not available</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-3xl border border-border/80 bg-background/30 p-5">

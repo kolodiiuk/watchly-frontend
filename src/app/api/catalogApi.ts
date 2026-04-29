@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi.ts';
-import { ContentType } from '../models/ContentType.tsx';
+import { TitleType } from '../models/TitleType.tsx';
 
 export interface TitleShortInfo {
   id: number;
@@ -28,7 +28,7 @@ export interface TitleInfo {
   releaseDate: string;
   runtime: number;
   avgTmdbRating?: number | null;
-  titleType: ContentType;
+  titleType: TitleType;
   name: string;
   overview?: string | null;
   posterUrl?: string | null;
@@ -40,7 +40,7 @@ export interface TitleInfo {
   voteCount: number;
   productionCompanies: ProductionCompany[];
   genres: Genre[];
-  spokenlanguages: SpokenLanguage[];
+  spokenLanguages: SpokenLanguage[];
 }
  
 export interface EpisodeInfo {
