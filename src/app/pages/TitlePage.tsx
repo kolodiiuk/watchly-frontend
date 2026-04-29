@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { Card } from '../../components/ui/Card.tsx';
-import { useGetTitleQuery, type TitleInfo } from '../api/catalogApi.ts';
+import {
+  type EpisodeInfo,
+  type TitleInfo,
+  useGetEpisodeQuery,
+  useGetTitleQuery,
+} from '../api/catalogApi.ts';
 import {
   commentApi,
   useDeleteCommentMutation,
+  useGetCommentsByEpisodeQuery,
   useGetCommentsByTitleQuery,
   useLeaveCommentMutation,
   useUpdateCommentMutation,
 } from '../api/commentApi.ts';
-import { useVoteTitleMutation } from '../api/voteApi.ts';
+import { useVoteEpisodeMutation, useVoteTitleMutation } from '../api/voteApi.ts';
 import { WatchStatus } from '../models/WatchStatus.ts';
 import type { AppDispatch } from '../store.ts';
 
@@ -86,10 +92,17 @@ const getFullImageUrl = (path: string, size: string) => {
   return `https://image.tmdb.org/t/p/${size}${path}`;
 };
 
-const detailItems = (titleInfo: TitleInfo) => [
+const movieDetailItems = (titleInfo: TitleInfo) => [
   { label: 'Release date', value: formatReleaseDate(titleInfo.releaseDate) },
   { label: 'Runtime', value: formatRuntime(titleInfo.runtime) },
   { label: 'Average TMDB rating', value: formatRating(titleInfo.avgTmdbRating) },
+  { label: 'Average Watchly rating', value: formatRating(10) },
+];
+
+const episodeDetailItems = (episodeInfo: EpisodeInfo) => [
+  { label: 'Season', value: `Season ${episodeInfo.seasonId}` },
+  { label: 'Episode', value: `Episode ${episodeInfo.episodeId}` },
+  { label: 'Parent title id', value: `${episodeInfo.titleId}` },
   { label: 'Average Watchly rating', value: formatRating(10) },
 ];
 
@@ -111,9 +124,14 @@ function PenIcon() {
 
 export function MovieDetailsPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { titleId: titleIdParam } = useParams<{ titleId: string }>();
-  const titleId = Number(titleIdParam);
-  const hasValidTitleId = Number.isInteger(titleId) && titleId > 0;
+  const { titleId: titleIdParam, episodeId: episodeIdParam } = useParams<{
+    titleId?: string;
+    episodeId?: string;
+  }>();
+  const isEpisodeRoute = Boolean(episodeIdParam);
+  const rawContentId = isEpisodeRoute ? episodeIdParam : titleIdParam;
+  const contentId = Number(rawContentId);
+  const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
   const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch);
   const [selectedVoteValue, setSelectedVoteValue] = useState(8);
   const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
@@ -127,22 +145,42 @@ export function MovieDetailsPage() {
   const [includeOwnCommentsInAssistantSearch, setIncludeOwnCommentsInAssistantSearch] = useState(true);
   const { user, isAuthenticated } = useAuth();
 
-  const { data: titleInfo, isLoading, isError } = useGetTitleQuery(titleId, {
-    skip: !hasValidTitleId,
+  const {
+    data: titleInfo,
+    isLoading: isTitleLoading,
+    isError: isTitleError,
+  } = useGetTitleQuery(contentId, {
+    skip: !hasValidContentId || isEpisodeRoute,
   });
   const {
-    data: comments = [],
-    isLoading: isCommentsLoading,
-    isError: isCommentsError,
-    refetch: refetchComments,
-  } = useGetCommentsByTitleQuery(titleId, {
-    skip: !hasValidTitleId,
+    data: episodeInfo,
+    isLoading: isEpisodeLoading,
+    isError: isEpisodeError,
+  } = useGetEpisodeQuery(contentId, {
+    skip: !hasValidContentId || !isEpisodeRoute,
   });
+
+  const titleCommentsQuery = useGetCommentsByTitleQuery(contentId, {
+    skip: !hasValidContentId || isEpisodeRoute,
+  });
+  const episodeCommentsQuery = useGetCommentsByEpisodeQuery(contentId, {
+    skip: !hasValidContentId || !isEpisodeRoute,
+  });
+
+  const comments = isEpisodeRoute ? episodeCommentsQuery.data ?? [] : titleCommentsQuery.data ?? [];
+  const isCommentsLoading = isEpisodeRoute ? episodeCommentsQuery.isLoading : titleCommentsQuery.isLoading;
+  const isCommentsError = isEpisodeRoute ? episodeCommentsQuery.isError : titleCommentsQuery.isError;
+  const refetchComments = isEpisodeRoute ? episodeCommentsQuery.refetch : titleCommentsQuery.refetch;
 
   const [leaveComment, { isLoading: isLeavingComment }] = useLeaveCommentMutation();
   const [updateComment, { isLoading: isUpdatingComment }] = useUpdateCommentMutation();
   const [deleteComment, { isLoading: isDeletingComment }] = useDeleteCommentMutation();
-  const [voteTitle, { isLoading: isSubmittingVote }] = useVoteTitleMutation();
+  const [voteTitle, { isLoading: isSubmittingTitleVote }] = useVoteTitleMutation();
+  const [voteEpisode, { isLoading: isSubmittingEpisodeVote }] = useVoteEpisodeMutation();
+
+  const isLoading = isEpisodeRoute ? isEpisodeLoading : isTitleLoading;
+  const isError = isEpisodeRoute ? isEpisodeError : isTitleError;
+  const isSubmittingVote = isEpisodeRoute ? isSubmittingEpisodeVote : isSubmittingTitleVote;
 
   const sortedComments = useMemo(() => {
     const currentUserId = user?.id;
@@ -179,6 +217,12 @@ export function MovieDetailsPage() {
   }, [ownComments, selectedOwnCommentId]);
 
   useEffect(() => {
+    setHasSubmittedVote(false);
+    setVoteError(null);
+    setVoteMessage(null);
+  }, [contentId, isEpisodeRoute]);
+
+  useEffect(() => {
     if (!ownComments?.length) {
       setSelectedOwnCommentId(null);
       setCommentDraft('');
@@ -212,13 +256,58 @@ export function MovieDetailsPage() {
   const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) => {
   };
 
+  const handleMarkEpisodeAsWatched = (_episodeId: number) => {
+  };
+
   const handleAssistantCommentSearch = (_prompt: string, _includeOwnComments: boolean) => {
+  };
+
+  const updateCommentsCacheAfterEdit = (commentId: number, text: string) => {
+    if (isEpisodeRoute) {
+      dispatch(
+        commentApi.util.updateQueryData('getCommentsByEpisode', contentId, draft => {
+          const commentToUpdate = draft.find(comment => comment.id === commentId);
+          if (!commentToUpdate) return;
+
+          commentToUpdate.text = text;
+          commentToUpdate.updatedAt = new Date().toISOString();
+        })
+      );
+      return;
+    }
+
+    dispatch(
+      commentApi.util.updateQueryData('getCommentsByTitle', contentId, draft => {
+        const commentToUpdate = draft.find(comment => comment.id === commentId);
+        if (!commentToUpdate) return;
+
+        commentToUpdate.text = text;
+        commentToUpdate.updatedAt = new Date().toISOString();
+      })
+    );
+  };
+
+  const updateCommentsCacheAfterDelete = (commentId: number) => {
+    if (isEpisodeRoute) {
+      dispatch(
+        commentApi.util.updateQueryData('getCommentsByEpisode', contentId, draft =>
+          draft.filter(comment => comment.id !== commentId)
+        )
+      );
+      return;
+    }
+
+    dispatch(
+      commentApi.util.updateQueryData('getCommentsByTitle', contentId, draft =>
+        draft.filter(comment => comment.id !== commentId)
+      )
+    );
   };
 
   const onWatchStatusSelect = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextStatus = Number(event.target.value) as WatchStatus;
     setSelectedWatchStatus(nextStatus);
-    handleWatchStatusChange(titleId, nextStatus);
+    handleWatchStatusChange(contentId, nextStatus);
   };
 
   const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -229,9 +318,7 @@ export function MovieDetailsPage() {
 
   const handleAssistantSearchSubmit = () => {
     const trimmedPrompt = assistantPrompt.trim();
-    if (!trimmedPrompt) {
-      return;
-    }
+    if (!trimmedPrompt) return;
 
     handleAssistantCommentSearch(trimmedPrompt, includeOwnCommentsInAssistantSearch);
   };
@@ -241,7 +328,7 @@ export function MovieDetailsPage() {
     setVoteMessage(null);
 
     if (!isAuthenticated) {
-      setVoteError('Please sign in to rate this title.');
+      setVoteError(`Please sign in to rate this ${isEpisodeRoute ? 'episode' : 'title'}.`);
       return;
     }
 
@@ -251,10 +338,18 @@ export function MovieDetailsPage() {
     }
 
     try {
-      await voteTitle({
-        titleId,
-        value: selectedVoteValue,
-      }).unwrap();
+      if (isEpisodeRoute) {
+        await voteEpisode({
+          episodeId: contentId,
+          value: selectedVoteValue,
+        }).unwrap();
+      } else {
+        await voteTitle({
+          titleId: contentId,
+          value: selectedVoteValue,
+        }).unwrap();
+      }
+
       setHasSubmittedVote(true);
       setVoteMessage(`Your rating of ${selectedVoteValue}/10 has been submitted.`);
     } catch {
@@ -281,22 +376,14 @@ export function MovieDetailsPage() {
           commentId: selectedOwnComment.id,
           text: trimmedComment,
         }).unwrap();
-        dispatch(
-          commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft => {
-            const commentToUpdate = draft.find(comment => comment.id === selectedOwnComment.id);
-            if (!commentToUpdate) return;
-
-            commentToUpdate.text = trimmedComment;
-            commentToUpdate.updatedAt = new Date().toISOString();
-          })
-        );
+        updateCommentsCacheAfterEdit(selectedOwnComment.id, trimmedComment);
         setCommentDraft(trimmedComment);
         setIsEditingOwnComment(false);
       } else {
         await leaveComment({
-          contentId: titleId,
+          contentId,
           text: trimmedComment,
-          isTitle: true,
+          isTitle: !isEpisodeRoute,
         }).unwrap();
         setCommentDraft('');
       }
@@ -363,11 +450,7 @@ export function MovieDetailsPage() {
     setCommentError(null);
     try {
       await deleteComment(selectedOwnComment.id).unwrap();
-      dispatch(
-        commentApi.util.updateQueryData('getCommentsByTitle', titleId, draft =>
-          draft.filter(comment => comment.id !== selectedOwnComment.id)
-        )
-      );
+      updateCommentsCacheAfterDelete(selectedOwnComment.id);
       setCommentDraft('');
       setSelectedOwnCommentId(null);
       setIsEditingOwnComment(false);
@@ -382,30 +465,19 @@ export function MovieDetailsPage() {
     ? ownComments?.findIndex(comment => comment.id === selectedOwnComment.id) ?? -1
     : -1;
   const isCreatingNewComment = selectedOwnComment === null;
+  const contentLabel = isEpisodeRoute ? 'episode' : 'movie';
 
-  const title = useMemo<TitleInfo | null>(() => {
-    if (!titleInfo) return null;
-
-    return {
-      id: titleInfo.id,
-      name: titleInfo.name,
-      overview: titleInfo.overview,
-      posterUrl: titleInfo.posterUrl,
-      releaseDate: titleInfo.releaseDate,
-      runtime: titleInfo.runtime,
-      avgTmdbRating: titleInfo.avgTmdbRating,
-    };
-  }, [titleInfo]);
-
-  if (!hasValidTitleId) {
+  if (!hasValidContentId) {
     return (
       <main className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <Card tone="raised">
-            <p className="text-sm uppercase tracking-[0.24em] text-muted">Movie details</p>
-            <h1 className="mt-2 text-3xl font-semibold text-text">We could not load this title.</h1>
+            <p className="text-sm uppercase tracking-[0.24em] text-muted">
+              {isEpisodeRoute ? 'Episode details' : 'Movie details'}
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-text">We could not load this {contentLabel}.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              The route is missing a valid movie id, so there is nothing for us to request yet.
+              The route is missing a valid id, so there is nothing for us to request yet.
             </p>
           </Card>
         </div>
@@ -438,15 +510,17 @@ export function MovieDetailsPage() {
     );
   }
 
-  if (isError || !title) {
+  if (isError || (!isEpisodeRoute && !titleInfo) || (isEpisodeRoute && !episodeInfo)) {
     return (
       <main className="px-4 py-6 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <Card tone="raised">
-            <p className="text-sm uppercase tracking-[0.24em] text-muted">Movie details</p>
-            <h1 className="mt-2 text-3xl font-semibold text-text">This title is unavailable right now.</h1>
+            <p className="text-sm uppercase tracking-[0.24em] text-muted">
+              {isEpisodeRoute ? 'Episode details' : 'Movie details'}
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-text">This {contentLabel} is unavailable right now.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              We reached the catalog route, but no title details came back for this id.
+              We reached the catalog route, but no details came back for this id.
             </p>
           </Card>
         </div>
@@ -457,44 +531,145 @@ export function MovieDetailsPage() {
   return (
     <main className="px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <Card tone="glass" className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,196,81,0.14),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(99,215,207,0.12),_transparent_34%)]" />
+        {!isEpisodeRoute && titleInfo ? (
+          <Card tone="glass" className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,196,81,0.14),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(99,215,207,0.12),_transparent_34%)]" />
 
-          <div className="relative grid gap-6 lg:grid-cols-[500px_minmax(0,1fr)]">
-            <div className="overflow-hidden rounded-3xl border border-white/10 bg-background/45">
-              {title.posterUrl ? (
-                <img
-                  src={getFullImageUrl(title.posterUrl, 'w500')}
-                  alt={`${title.name} poster`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex items-center justify-center bg-background/60 p-6 text-center text-sm text-muted">
-                  Poster unavailable
+            <div className="relative grid gap-6 lg:grid-cols-[500px_minmax(0,1fr)]">
+              <div className="overflow-hidden rounded-3xl border border-white/10 bg-background/45">
+                {titleInfo.posterUrl ? (
+                  <img
+                    src={getFullImageUrl(titleInfo.posterUrl, 'w500')}
+                    alt={`${titleInfo.name} poster`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-background/60 p-6 text-center text-sm text-muted">
+                    Poster unavailable
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge tone="accent">Movie details</Badge>
                 </div>
-              )}
-            </div>
 
-            <div className="flex flex-col gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog title</p>
+                    <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
+                      {titleInfo.name}
+                    </h1>
+                  </div>
+
+                  <p className="max-w-3xl text-sm leading-7 text-muted">
+                    {titleInfo.overview?.trim() || 'Overview not available for this title yet.'}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {movieDetailItems(titleInfo).map(item => (
+                    <div key={item.label} className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                      <div className="text-xs uppercase tracking-[0.2em] text-muted">{item.label}</div>
+                      <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="space-y-4">
+                      <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
+                      <label className="block">
+                        <span className="text-xs uppercase tracking-[0.2em] text-muted">Watch status</span>
+                        <select
+                          value={selectedWatchStatus}
+                          onChange={onWatchStatusSelect}
+                          className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30">
+                          {watchStatusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                        <label className="block">
+                          <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
+                          <select
+                            value={selectedVoteValue}
+                            onChange={onVoteValueSelect}
+                            disabled={!isAuthenticated || isSubmittingVote}
+                            className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70">
+                            {Array.from({ length: 10 }, (_, index) => index + 1).map(value => (
+                              <option key={value} value={value}>
+                                {value} / 10
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <Button
+                          type="button"
+                          onClick={handleVoteSubmit}
+                          disabled={isSubmittingVote || !isAuthenticated}
+                          className="lg:min-w-[150px]">
+                          {hasSubmittedVote ? 'Change vote' : 'Submit vote'}
+                        </Button>
+                      </div>
+                      {voteError ? <p className="text-sm text-danger">{voteError}</p> : null}
+                      {voteMessage ? <p className="text-sm text-success">{voteMessage}</p> : null}
+                      {hasSubmittedVote ? (
+                        <p className="text-sm leading-6 text-muted">
+                          The current API accepts a new title vote, but it does not return or expose your existing
+                          `voteId`, so safe vote changes need backend support first.
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-6 text-muted">
+                          Rate this title on a 1 to 10 scale. Your rating is separate from the TMDB average above.
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      style={{ maxWidth: '150px', width: '100%' }}
+                      variant="secondary"
+                      disabled
+                      className="disabled:cursor-not-allowed disabled:opacity-70">
+                      Add to watchlist
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {isEpisodeRoute && episodeInfo ? (
+          <Card tone="glass" className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,215,207,0.14),_transparent_32%),radial-gradient(circle_at_bottom_left,_rgba(245,196,81,0.1),_transparent_34%)]" />
+
+            <div className="relative flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
-                <Badge tone="accent">Movie details</Badge>
+                <Badge tone="accent">Episode details</Badge>
+                <Badge tone="default">Title {episodeInfo.titleId}</Badge>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog title</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Catalog episode</p>
                   <h1 className="mt-2 text-4xl font-semibold tracking-tight text-text sm:text-5xl">
-                    {title.name}
+                    Season {episodeInfo.seasonId}, Episode {episodeInfo.episodeId}
                   </h1>
                 </div>
 
                 <p className="max-w-3xl text-sm leading-7 text-muted">
-                  {title.overview?.trim() || 'Overview not available for this title yet.'}
+                  This episode view uses episode-oriented data and discussion. Parent title id: {episodeInfo.titleId}.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                {detailItems(title).map(item => (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {episodeDetailItems(episodeInfo).map(item => (
                   <div key={item.label} className="rounded-2xl border border-border/80 bg-background/35 p-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">{item.label}</div>
                     <div className="mt-2 text-lg font-semibold text-text">{item.value}</div>
@@ -506,19 +681,13 @@ export function MovieDetailsPage() {
                 <div className="flex flex-col gap-4">
                   <div className="space-y-4">
                     <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                    <label className="block">
-                      <span className="text-xs uppercase tracking-[0.2em] text-muted">Watch status</span>
-                      <select
-                        value={selectedWatchStatus}
-                        onChange={onWatchStatusSelect}
-                        className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30">
-                        {watchStatusOptions.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => handleMarkEpisodeAsWatched(contentId)}
+                      style={{ maxWidth: '180px', width: '100%' }}>
+                      Mark as watched
+                    </Button>
                     <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                       <label className="block">
                         <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
@@ -547,27 +716,21 @@ export function MovieDetailsPage() {
                     {voteMessage ? <p className="text-sm text-success">{voteMessage}</p> : null}
                     {hasSubmittedVote ? (
                       <p className="text-sm leading-6 text-muted">
-                        The current API accepts a new title vote, but it does not return or expose your existing
+                        The current API accepts a new episode vote, but it does not return or expose your existing
                         `voteId`, so safe vote changes need backend support first.
                       </p>
                     ) : (
                       <p className="text-sm leading-6 text-muted">
-                        Rate this title on a 1 to 10 scale. Your rating is separate from the TMDB average above.
+                        Rate this episode on a 1 to 10 scale. This episode score is tracked separately from title-wide
+                        sentiment.
                       </p>
                     )}
                   </div>
-                  <Button
-                    style={{ maxWidth: '150px', width: '100%' }}
-                    variant="secondary"
-                    disabled
-                    className="disabled:cursor-not-allowed disabled:opacity-70">
-                    Add to watchlist
-                  </Button>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        ) : null}
 
         <Card tone="glass" className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(245,196,81,0.1),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(99,215,207,0.1),_transparent_36%),linear-gradient(180deg,_rgba(255,255,255,0.02),_transparent_28%)]" />
@@ -711,7 +874,7 @@ export function MovieDetailsPage() {
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {selectedOwnComment && !isEditingOwnComment
                         ? 'Cycle through your comments, then revise or remove the one you want.'
-                        : 'Share a quick reaction for other Watchly users.'}
+                        : `Share a quick reaction for other Watchly users about this ${contentLabel}.`}
                     </p>
                   </div>
 
@@ -722,7 +885,7 @@ export function MovieDetailsPage() {
                       onChange={event => setCommentDraft(event.target.value)}
                       disabled={Boolean(selectedOwnComment) && !isEditingOwnComment}
                       rows={4}
-                      placeholder="Write your thoughts about this movie."
+                      placeholder={`Write your thoughts about this ${contentLabel}.`}
                       className="w-full resize-none rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm text-text outline-none ring-0 transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
                     />
                   </label>
@@ -780,7 +943,7 @@ export function MovieDetailsPage() {
                 </div>
               ) : isCommentsError ? (
                 <div className="rounded-3xl border border-danger/30 bg-danger/5 p-5 text-sm text-danger">
-                  We could not load comments for this title right now.
+                  We could not load comments for this {contentLabel} right now.
                 </div>
               ) : sortedComments.length ? (
                 sortedComments.map(comment => {
@@ -826,7 +989,7 @@ export function MovieDetailsPage() {
                 })
               ) : (
                 <div className="rounded-3xl border border-dashed border-border/80 bg-background/20 p-6 text-sm leading-6 text-muted">
-                  No comments yet. Be the first person to weigh in on this movie.
+                  No comments yet. Be the first person to weigh in on this {contentLabel}.
                 </div>
               )}
             </div>

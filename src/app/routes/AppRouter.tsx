@@ -26,6 +26,10 @@ const router = createBrowserRouter([
         element: <MovieDetailsPage />,
       },
       {
+        path: 'episode/:episodeId',
+        element: <MovieDetailsPage />,
+      },
+      {
         path: 'auth',
         element: <AuthLayout />,
         children: [
