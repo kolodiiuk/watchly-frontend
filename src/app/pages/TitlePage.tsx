@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
@@ -89,10 +89,6 @@ const mapNamedItems = (items?: Array<{ name: string }>) => {
     .filter((item): item is string => Boolean(item));
 };
 
-const formatTitleType = (titleType: TitleType) => {
-  return titleType === TitleType.Movie ? 'Movie' : 'Series';
-};
-
 const formatCommentDate = (value: string) => {
   const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
@@ -169,6 +165,29 @@ function TitleLink({ titleId, titleName }: { titleId: number; titleName: string 
       to={`/title/${titleId}`}
       className="text-accent transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
       {titleName}
+    </Link>
+  );
+}
+
+function EpisodeLink({
+  episodeId,
+  children,
+  className = '',
+}: {
+  episodeId: number;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      to={`/episode/${episodeId}`}
+      className={[
+        'transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}>
+      {children}
     </Link>
   );
 }
@@ -520,12 +539,19 @@ export function TitlePage() {
     }
   };
 
+  const getContentType = () => {
+    if(isEpisodeRoute) {
+      return "Episode"
+    }
+    
+    return titleInfo?.titleType == TitleType.Series ? "Series" : "Movie"
+  } 
+
   const isCommentMutationLoading = isLeavingComment || isUpdatingComment || isDeletingComment;
   const selectedOwnCommentIndex = selectedOwnComment
     ? ownComments?.findIndex(comment => comment.id === selectedOwnComment.id) ?? -1
     : -1;
   const isCreatingNewComment = selectedOwnComment === null;
-  const contentLabel = isEpisodeRoute ? 'episode' : 'movie';
   const castMembers = splitDisplayValues(titleInfo?.actors);
   const localizationLanguages = splitDisplayValues(titleInfo?.localizationLanguages);
   const genres = mapNamedItems(titleInfo?.genres);
@@ -538,9 +564,9 @@ export function TitlePage() {
         <div className="mx-auto max-w-7xl">
           <Card tone="raised">
             <p className="text-sm uppercase tracking-[0.24em] text-muted">
-              {isEpisodeRoute ? 'Episode details' : 'Movie details'}
+              {isEpisodeRoute ? 'Episode details' : 'Title details'}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-text">We could not load this {contentLabel}.</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-text">We could not load this {getContentType()}.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
               The route is missing a valid id, so there is nothing for us to request yet.
             </p>
@@ -581,9 +607,9 @@ export function TitlePage() {
         <div className="mx-auto max-w-7xl">
           <Card tone="raised">
             <p className="text-sm uppercase tracking-[0.24em] text-muted">
-              {isEpisodeRoute ? 'Episode details' : 'Movie details'}
+              {getContentType() + ' details'}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-text">This {contentLabel} is unavailable right now.</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-text">This {getContentType()} is unavailable right now.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
               We reached the catalog route, but no details came back for this id.
             </p>
@@ -617,7 +643,7 @@ export function TitlePage() {
 
               <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge tone="accent">Movie details</Badge>
+                  <Badge tone="accent">{getContentType()} details</Badge>
                 </div>
 
                 <div className="space-y-4">
@@ -654,7 +680,7 @@ export function TitlePage() {
                   <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">Type</div>
                     <div className="mt-2 text-lg font-semibold text-text">
-                      {formatTitleType(titleInfo.titleType)}
+                      {getContentType()}
                     </div>
                   </div>
 
@@ -807,6 +833,73 @@ export function TitlePage() {
                     </Button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {!isEpisodeRoute && titleInfo && titleInfo.titleType === TitleType.Series && titleInfo.seasons.length ? (
+          <Card tone="glass" className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,215,207,0.1),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(245,196,81,0.08),_transparent_34%)]" />
+
+            <div className="relative space-y-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.24em] text-muted">Seasons and episodes</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-text">Browse the series run</h2>
+                </div>
+                <Badge tone="default">
+                  {titleInfo.seasons.length} season{titleInfo.seasons.length === 1 ? '' : 's'}
+                </Badge>
+              </div>
+
+              <div className="space-y-4">
+                {titleInfo.seasons.map(season => (
+                  <section
+                    key={season.seasonId}
+                    className="overflow-hidden rounded-3xl border border-border/80 bg-background/25">
+                    <div className="border-b border-border/70 bg-background/35 px-5 py-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted">
+                            Season {season.ordinalNumber}
+                          </div>
+                          <h3 className="mt-2 text-xl font-semibold text-text">
+                            {season.name?.trim() || `Season ${season.ordinalNumber}`}
+                          </h3>
+                        </div>
+                        <Badge tone="accent">
+                          {season.episodes.length} episode{season.episodes.length === 1 ? '' : 's'}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {season.episodes.length ? (
+                      <div className="divide-y divide-border/70">
+                        {season.episodes.map((episode, episodeIndex) => (
+                          <EpisodeLink
+                            key={episode.episodeId}
+                            episodeId={episode.episodeId}
+                            className="block bg-background/15 px-5 py-4 hover:bg-white/5">
+                            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_160px_180px] lg:items-center">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-text">
+                                  {episodeIndex + 1}. {episode.name?.trim() || `Episode ${episodeIndex + 1}`}
+                                </div>
+                              </div>
+                              <div className="text-sm text-muted">{formatRuntime(episode.runtime)}</div>
+                              <div className="text-sm text-muted">
+                                {formatGenericRating(episode.avgVote)} average
+                              </div>
+                            </div>
+                          </EpisodeLink>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-5 py-4 text-sm text-muted">Episodes are not available for this season yet.</div>
+                    )}
+                  </section>
+                ))}
               </div>
             </div>
           </Card>
@@ -1073,7 +1166,7 @@ export function TitlePage() {
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {selectedOwnComment && !isEditingOwnComment
                         ? 'Cycle through your comments, then revise or remove the one you want.'
-                        : `Share a quick reaction for other Watchly users about this ${contentLabel}.`}
+                        : `Share a quick reaction for other Watchly users about this ${getContentType()}.`}
                     </p>
                   </div>
 
@@ -1084,7 +1177,7 @@ export function TitlePage() {
                       onChange={event => setCommentDraft(event.target.value)}
                       disabled={Boolean(selectedOwnComment) && !isEditingOwnComment}
                       rows={4}
-                      placeholder={`Write your thoughts about this ${contentLabel}.`}
+                      placeholder={`Write your thoughts about this ${getContentType()}.`}
                       className="w-full resize-none rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm text-text outline-none ring-0 transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
                     />
                   </label>
@@ -1142,7 +1235,7 @@ export function TitlePage() {
                 </div>
               ) : isCommentsError ? (
                 <div className="rounded-3xl border border-danger/30 bg-danger/5 p-5 text-sm text-danger">
-                  We could not load comments for this {contentLabel} right now.
+                  We could not load comments for this {getContentType()} right now.
                 </div>
               ) : sortedComments.length ? (
                 sortedComments.map(comment => {
@@ -1188,7 +1281,7 @@ export function TitlePage() {
                 })
               ) : (
                 <div className="rounded-3xl border border-dashed border-border/80 bg-background/20 p-6 text-sm leading-6 text-muted">
-                  No comments yet. Be the first person to weigh in on this {contentLabel}.
+                  No comments yet. Be the first person to weigh in on this {getContentType()}.
                 </div>
               )}
             </div>
