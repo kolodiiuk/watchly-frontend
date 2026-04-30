@@ -6,9 +6,9 @@ import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { Card } from '../../components/ui/Card.tsx';
 import { TitleType } from '../models/TitleType.tsx';
+import type { TitleInfo } from '../models/TitleInfo.tsx';
+import type { EpisodeInfo } from '../models/EpisodeInfo.tsx';
 import {
-  type EpisodeInfo,
-  type TitleInfo,
   useGetEpisodeQuery,
   useGetTitleQuery,
 } from '../api/catalogApi.ts';
@@ -644,6 +644,7 @@ export function TitlePage() {
               <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge tone="accent">{getContentType()} details</Badge>
+                  {titleInfo.isAdult && <Badge tone="warning">Adult</Badge>}
                 </div>
 
                 <div className="space-y-4">
