@@ -1,57 +1,207 @@
-import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import {useMemo, useState} from 'react';
+import type {FormEvent} from 'react';
+import {Link} from 'react-router-dom';
+import {Badge} from '../../components/ui/Badge';
+import {Button} from '../../components/ui/Button';
+import {Card} from '../../components/ui/Card';
 import {
   type FilterRequest,
+  SortBy,
   useFilterTitlesQuery,
   useSearchTitlesQuery,
 } from '../api/catalogApi.ts';
-import { TitleType } from '../models/TitleType.tsx';
-
-const genreOptions = [
-  { id: 28, label: 'Action' },
-  { id: 12, label: 'Adventure' },
-  { id: 16, label: 'Animation' },
-  { id: 35, label: 'Comedy' },
-  { id: 80, label: 'Crime' },
-  { id: 18, label: 'Drama' },
-  { id: 14, label: 'Fantasy' },
-  { id: 27, label: 'Horror' },
-  { id: 9648, label: 'Mystery' },
-  { id: 10749, label: 'Romance' },
-  { id: 878, label: 'Science Fiction' },
-  { id: 53, label: 'Thriller' },
-];
+import {TitleType} from '../models/TitleType.tsx';
 
 const typeOptions = [
-  { id: TitleType.Movie, label: 'Movie' },
-  { id: TitleType.Series, label: 'TV Series' },
+  {id: TitleType.Movie, label: 'Movie'},
+  {id: TitleType.Series, label: 'TV Series'},
 ];
+export type CatalogSortBy = SortBy;
 
 const sortOptions = [
-  { value: 'releaseDate', label: 'Release date' },
-  { value: 'popularity', label: 'Popularity' },
-  { value: 'rating', label: 'Rating' },
+  {value: SortBy.Id, label: 'Default'},
+  {value: SortBy.ReleaseDateAsc, label: 'Release Date Ascending'},
+  {value: SortBy.TmdbRatingAsc, label: 'Rating Ascending'},
+  {value: SortBy.ReleaseDateDesc, label: 'Release Date Descending'},
+  {value: SortBy.TmdbRatingDesc, label: 'Rating Descending'},
 ] as const;
 
-type CatalogSortBy = (typeof sortOptions)[number]['value'];
-type SortOrder = 'desc' | 'asc';
+interface Genre
+{
+  id: number;
+  name: string;
+}
 
+const genreOptions: Genre[] = [
+  {
+    "id": 1,
+    "name": "Action"
+  },
+  {
+    "id": 2,
+    "name": "Science Fiction"
+  },
+  {
+    "id": 3,
+    "name": "Adventure"
+  },
+  {
+    "id": 4,
+    "name": "Drama"
+  },
+  {
+    "id": 5,
+    "name": "Crime"
+  },
+  {
+    "id": 6,
+    "name": "Thriller"
+  },
+  {
+    "id": 7,
+    "name": "Fantasy"
+  },
+  {
+    "id": 8,
+    "name": "Comedy"
+  },
+  {
+    "id": 9,
+    "name": "Romance"
+  },
+  {
+    "id": 10,
+    "name": "Western"
+  },
+  {
+    "id": 11,
+    "name": "Mystery"
+  },
+  {
+    "id": 12,
+    "name": "War"
+  },
+  {
+    "id": 13,
+    "name": "Animation"
+  },
+  {
+    "id": 14,
+    "name": "Family"
+  },
+  {
+    "id": 15,
+    "name": "Horror"
+  },
+  {
+    "id": 16,
+    "name": "Music"
+  },
+  {
+    "id": 17,
+    "name": "History"
+  },
+  {
+    "id": 18,
+    "name": "TV Movie"
+  },
+  {
+    "id": 19,
+    "name": "Documentary"
+  },
+  {
+    "id": 20,
+    "name": "Sci-Fi & Fantasy"
+  },
+  {
+    "id": 21,
+    "name": "Action & Adventure"
+  },
+  {
+    "id": 22,
+    "name": "War & Politics"
+  },
+  {
+    "id": 23,
+    "name": "Soap"
+  },
+  {
+    "id": 24,
+    "name": "Kids"
+  },
+  {
+    "id": 25,
+    "name": "Reality"
+  },
+  {
+    "id": 26,
+    "name": "Talk"
+  },
+  {
+    "id": 27,
+    "name": "News"
+  },
+  {
+    "id": 28,
+    "name": "Musical"
+  }
+]
 const pageSizes = [12, 20, 24, 40];
 
-function toggleNumber(list: number[], value: number) {
+function toggleNumber(list: number[], value: number)
+{
   return list.includes(value) ? list.filter(item => item !== value) : [...list, value];
 }
 
 // todo: formatters.ts
-const getFullImageUrl = (path: string, size: string) => {
+const getFullImageUrl = (path: string, size: string) =>
+{
   return `https://image.tmdb.org/t/p/${size}${path}`;
 };
 
-export function BrowsePage() {
+const getSortByEnumValue = (value: string): SortBy =>
+{
+  const num = Number(value);
+  if (!isNaN(num) && (Object.values(SortBy) as number[]).includes(num))
+  {
+    return num as SortBy;
+  }
+  return SortBy.Id;
+};
+
+export function BrowsePage()
+{
+  const storedFilter = localStorage.getItem('filter');
+  let initialFilter;
+  if (storedFilter)
+  {
+    const parsed: FilterRequest = JSON.parse(storedFilter);
+    initialFilter = {
+      genres: parsed.genres ?? [],
+      titleTypes: parsed.titleTypes ?? [],
+      yearStart: parsed.yearsRange?.start ?? 1800,
+      yearEnd: parsed.yearsRange?.end ?? 2026,
+      ratingStart: parsed.ratingRange?.start ?? 0,
+      ratingEnd: parsed.ratingRange?.end ?? 10,
+      sortBy: parsed.sortBy ?? SortBy.Id,
+      page: parsed.page ?? 1,
+      size: parsed.size ?? 20
+    }
+  } else
+  {
+    initialFilter = {
+      genres: [],
+      titleTypes: [],
+      yearStart: 1800,
+      yearEnd: 2026,
+      ratingStart: 0,
+      ratingEnd: 10,
+      sortBy: SortBy.Id,
+      page: 1,
+      size: 20
+    };
+  }
+
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
@@ -60,17 +210,51 @@ export function BrowsePage() {
   const [yearEnd, setYearEnd] = useState('');
   const [ratingStart, setRatingStart] = useState('');
   const [ratingEnd, setRatingEnd] = useState('');
-  const [sortBy, setSortBy] = useState<CatalogSortBy>('releaseDate');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortBy, setSortBy] = useState<SortBy>(SortBy.Id);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
+
+  const [pendingGenres, setPendingGenres] = useState<number[]>(initialFilter.genres);
+  const [pendingTypes, setPendingTypes] = useState<number[]>(initialFilter.titleTypes);
+  const [pendingYearStart, setPendingYearStart] = useState<string>(initialFilter.yearStart.toString());
+  const [pendingYearEnd, setPendingYearEnd] = useState<string>(initialFilter.yearEnd.toString());
+  const [pendingRatingStart, setPendingRatingStart] = useState<string>(initialFilter.ratingStart.toString());
+  const [pendingRatingEnd, setPendingRatingEnd] = useState<string>(initialFilter.ratingEnd.toString());
 
   const hasSearch = searchTerm.trim().length > 0;
   const filtersDisabled = hasSearch;
 
-  const filterRequest = useMemo<FilterRequest>(() => {
-    const yearsRange = yearStart && yearEnd ? { start: Number(yearStart), end: Number(yearEnd) } : undefined;
-    const ratingRange = ratingStart && ratingEnd ? { start: Number(ratingStart), end: Number(ratingEnd) } : undefined;
+  const handleApplyFilters = () =>
+  {
+    setSelectedGenres(pendingGenres);
+    setSelectedTypes(pendingTypes);
+    setYearStart(pendingYearStart);
+    setYearEnd(pendingYearEnd);
+    setRatingStart(pendingRatingStart);
+    setRatingEnd(pendingRatingEnd);
+    setPage(1);
+    const filter: FilterRequest = {
+      genres: pendingGenres.length ? pendingGenres : undefined,
+      titleTypes: pendingTypes.length ? pendingTypes : undefined,
+      yearsRange: pendingYearStart && pendingYearEnd ? {
+        start: Number(pendingYearStart),
+        end: Number(pendingYearEnd)
+      } : undefined,
+      ratingRange: pendingRatingStart && pendingRatingEnd ? {
+        start: Number(pendingRatingStart),
+        end: Number(pendingRatingEnd)
+      } : undefined,
+      page: 1,
+      size,
+      sortBy,
+    };
+    localStorage.setItem('filter', JSON.stringify(filter));
+  };
+
+  const filterRequest = useMemo<FilterRequest>(() =>
+  {
+    const yearsRange = yearStart || yearEnd ? {start: Number(yearStart), end: Number(yearEnd)} : undefined;
+    const ratingRange = ratingStart || ratingEnd ? {start: Number(ratingStart), end: Number(ratingEnd)} : undefined;
 
     return {
       genres: selectedGenres.length ? selectedGenres : undefined,
@@ -80,15 +264,14 @@ export function BrowsePage() {
       page,
       size,
       sortBy,
-      sortOrder,
     };
-  }, [page, ratingEnd, ratingStart, selectedGenres, selectedTypes, size, sortBy, sortOrder, yearEnd, yearStart]);
+  }, [page, ratingEnd, ratingStart, selectedGenres, selectedTypes, size, sortBy, yearEnd, yearStart]);
 
   const searchQuery = useSearchTitlesQuery(
-    { term: searchTerm, page, pageSize: size },
-    { skip: !hasSearch },
+    {term: searchTerm, page, pageSize: size},
+    {skip: !hasSearch},
   );
-  const filterQuery = useFilterTitlesQuery(filterRequest, { skip: hasSearch });
+  const filterQuery = useFilterTitlesQuery(filterRequest, {skip: hasSearch});
 
   const titles = (hasSearch ? searchQuery.data : filterQuery.data) ?? [];
   const isLoading = hasSearch ? searchQuery.isLoading : filterQuery.isLoading;
@@ -98,25 +281,34 @@ export function BrowsePage() {
   const canPrevious = page > 1;
   const canNext = titles.length === size && !isLoading;
 
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) =>
+  {
     event.preventDefault();
     setPage(1);
     setSearchTerm(searchInput.trim());
   };
 
-  const handleClearSearch = () => {
+  const handleClearSearch = () =>
+  {
     setSearchInput('');
     setSearchTerm('');
     setPage(1);
   };
 
-  const handleResetFilters = () => {
+  const handleResetFilters = () =>
+  {
     setSelectedGenres([]);
     setSelectedTypes([]);
     setYearStart('');
     setYearEnd('');
     setRatingStart('');
     setRatingEnd('');
+    setPendingGenres([]);
+    setPendingTypes([]);
+    setPendingYearStart('');
+    setPendingYearEnd('');
+    setPendingRatingStart('');
+    setPendingRatingEnd('');
     setPage(1);
   };
 
@@ -147,15 +339,18 @@ export function BrowsePage() {
                       <input
                         className="h-4 w-4 accent-primary"
                         type="checkbox"
-                        checked={selectedGenres.includes(option.id)}
-                        onChange={() => {
-                          if (filtersDisabled) return;
-                          setSelectedGenres(prev => toggleNumber(prev, option.id));
-                          setPage(1);
+                        checked={pendingGenres.includes(option.id)}
+                        onChange={() =>
+                        {
+                          if (filtersDisabled)
+                          {
+                            return;
+                          }
+                          setPendingGenres(prev => toggleNumber(prev, option.id));
                         }}
                         disabled={filtersDisabled}
                       />
-                      <span>{option.label}</span>
+                      <span>{option.name}</span>
                     </label>
                   ))}
                 </div>
@@ -169,11 +364,14 @@ export function BrowsePage() {
                       <input
                         className="h-4 w-4 accent-primary"
                         type="checkbox"
-                        checked={selectedTypes.includes(option.id)}
-                        onChange={() => {
-                          if (filtersDisabled) return;
-                          setSelectedTypes(prev => toggleNumber(prev, option.id));
-                          setPage(1);
+                        checked={pendingTypes.includes(option.id)}
+                        onChange={() =>
+                        {
+                          if (filtersDisabled)
+                          {
+                            return;
+                          }
+                          setPendingTypes(prev => toggleNumber(prev, option.id));
                         }}
                         disabled={filtersDisabled}
                       />
@@ -192,11 +390,14 @@ export function BrowsePage() {
                     min={1900}
                     max={2100}
                     placeholder="From"
-                    value={yearStart}
-                    onChange={event => {
-                      if (filtersDisabled) return;
-                      setYearStart(event.target.value);
-                      setPage(1);
+                    value={pendingYearStart}
+                    onChange={event =>
+                    {
+                      if (filtersDisabled)
+                      {
+                        return;
+                      }
+                      setPendingYearStart(event.target.value);
                     }}
                     disabled={filtersDisabled}
                   />
@@ -206,11 +407,14 @@ export function BrowsePage() {
                     min={1900}
                     max={2100}
                     placeholder="To"
-                    value={yearEnd}
-                    onChange={event => {
-                      if (filtersDisabled) return;
-                      setYearEnd(event.target.value);
-                      setPage(1);
+                    value={pendingYearEnd}
+                    onChange={event =>
+                    {
+                      if (filtersDisabled)
+                      {
+                        return;
+                      }
+                      setPendingYearEnd(event.target.value);
                     }}
                     disabled={filtersDisabled}
                   />
@@ -227,11 +431,14 @@ export function BrowsePage() {
                     min={0}
                     max={10}
                     placeholder="From"
-                    value={ratingStart}
-                    onChange={event => {
-                      if (filtersDisabled) return;
-                      setRatingStart(event.target.value);
-                      setPage(1);
+                    value={pendingRatingStart}
+                    onChange={event =>
+                    {
+                      if (filtersDisabled)
+                      {
+                        return;
+                      }
+                      setPendingRatingStart(event.target.value);
                     }}
                     disabled={filtersDisabled}
                   />
@@ -242,16 +449,27 @@ export function BrowsePage() {
                     min={0}
                     max={10}
                     placeholder="To"
-                    value={ratingEnd}
-                    onChange={event => {
-                      if (filtersDisabled) return;
-                      setRatingEnd(event.target.value);
-                      setPage(1);
+                    value={pendingRatingEnd}
+                    onChange={event =>
+                    {
+                      if (filtersDisabled)
+                      {
+                        return;
+                      }
+                      setPendingRatingEnd(event.target.value);
                     }}
                     disabled={filtersDisabled}
                   />
                 </div>
               </div>
+
+              <Button
+                className="w-full"
+                onClick={handleApplyFilters}
+                disabled={filtersDisabled}
+              >
+                Apply Filters
+              </Button>
             </div>
           </Card>
         </aside>
@@ -279,8 +497,9 @@ export function BrowsePage() {
                 <select
                   className="rounded-2xl border border-border bg-background/60 px-3 py-2 text-sm text-text"
                   value={sortBy}
-                  onChange={event => {
-                    setSortBy(event.target.value as CatalogSortBy);
+                  onChange={event =>
+                  {
+                    setSortBy(getSortByEnumValue(event.target.value));
                     setPage(1);
                   }}>
                   {sortOptions.map(option => (
@@ -289,22 +508,11 @@ export function BrowsePage() {
                     </option>
                   ))}
                 </select>
-
-                <select
-                  className="rounded-2xl border border-border bg-background/60 px-3 py-2 text-sm text-text"
-                  value={sortOrder}
-                  onChange={event => {
-                    setSortOrder(event.target.value as SortOrder);
-                    setPage(1);
-                  }}>
-                  <option value="desc">Newest first</option>
-                  <option value="asc">Oldest first</option>
-                </select>
-
                 <select
                   className="rounded-2xl border border-border bg-background/60 px-3 py-2 text-sm text-text"
                   value={size}
-                  onChange={event => {
+                  onChange={event =>
+                  {
                     setSize(Number(event.target.value));
                     setPage(1);
                   }}>
@@ -374,7 +582,8 @@ export function BrowsePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-muted">Page {page}</div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" type="button" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={!canPrevious}>
+              <Button variant="secondary" type="button" onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                      disabled={!canPrevious}>
                 Previous
               </Button>
               <Button variant="secondary" type="button" onClick={() => setPage(prev => prev + 1)} disabled={!canNext}>
