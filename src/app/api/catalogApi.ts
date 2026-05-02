@@ -18,6 +18,16 @@ export interface FloatRange {
   end: number;
 }
 
+export const SortBy = {
+  ReleaseDateAsc: 0,
+  TmdbRatingAsc: 1,
+  ReleaseDateDesc: 2,
+  TmdbRatingDesc: 3,
+  Id: 4
+} as const;
+
+export type SortBy = (typeof SortBy)[keyof typeof SortBy];
+
 export interface FilterRequest {
   genres?: number[];
   keywords?: number[];
@@ -27,6 +37,7 @@ export interface FilterRequest {
   ratingRange?: FloatRange;
   page?: number;
   size?: number;
+  sortBy?: SortBy;
   [key: string]: any;
 }
 
