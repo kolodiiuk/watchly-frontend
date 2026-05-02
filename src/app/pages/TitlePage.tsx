@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
@@ -6,9 +6,9 @@ import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { Card } from '../../components/ui/Card.tsx';
 import { TitleType } from '../models/TitleType.tsx';
+import type { TitleInfo } from '../models/TitleInfo.tsx';
+import type { EpisodeInfo } from '../models/EpisodeInfo.tsx';
 import {
-  type EpisodeInfo,
-  type TitleInfo,
   useGetEpisodeQuery,
   useGetTitleQuery,
 } from '../api/catalogApi.ts';
@@ -159,10 +159,10 @@ const watchStatusOptions = [
   { value: WatchStatus.Dropped, label: 'Dropped' },
 ];
 
-function TitleLink({ titleId, titleName }: { titleId: number; titleName: string }) {
+function TitleLink({ titleId, titleName, hash }: { titleId: number; titleName: string; hash?: string }) {
   return (
     <Link
-      to={`/title/${titleId}`}
+      to={`/title/${titleId}${hash || ''}`}
       className="text-accent transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
       {titleName}
     </Link>
@@ -222,6 +222,8 @@ export function TitlePage() {
   const [selectedOwnCommentId, setSelectedOwnCommentId] = useState<number | null>(null);
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [includeOwnCommentsInAssistantSearch, setIncludeOwnCommentsInAssistantSearch] = useState(true);
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
+  const seasonsRef = useRef<HTMLDivElement>(null);
   const { user, isAuthenticated } = useAuth();
 
   const {
@@ -331,6 +333,15 @@ export function TitlePage() {
 
     setCommentDraft('');
   }, [selectedOwnComment, isEditingOwnComment]);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === '#seasons' && seasonsRef.current) {
+      setTimeout(() => {
+        seasonsRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 0);
+    }
+  }, [titleInfo]);
 
   const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) => {
   };
@@ -644,6 +655,7 @@ export function TitlePage() {
               <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge tone="accent">{getContentType()} details</Badge>
+                  {titleInfo.isAdult && <Badge tone="warning">Adult</Badge>}
                 </div>
 
                 <div className="space-y-4">
@@ -839,7 +851,8 @@ export function TitlePage() {
         ) : null}
 
         {!isEpisodeRoute && titleInfo && titleInfo.titleType === TitleType.Series && titleInfo.seasons.length ? (
-          <Card tone="glass" className="relative overflow-hidden">
+          <div ref={seasonsRef}>
+            <Card tone="glass" className="relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,215,207,0.1),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(245,196,81,0.08),_transparent_34%)]" />
 
             <div className="relative space-y-6">
@@ -854,55 +867,84 @@ export function TitlePage() {
               </div>
 
               <div className="space-y-4">
-                {titleInfo.seasons.map(season => (
-                  <section
-                    key={season.seasonId}
-                    className="overflow-hidden rounded-3xl border border-border/80 bg-background/25">
-                    <div className="border-b border-border/70 bg-background/35 px-5 py-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-muted">
-                            Season {season.ordinalNumber}
-                          </div>
-                          <h3 className="mt-2 text-xl font-semibold text-text">
-                            {season.name?.trim() || `Season ${season.ordinalNumber}`}
-                          </h3>
-                        </div>
-                        <Badge tone="accent">
-                          {season.episodes.length} episode{season.episodes.length === 1 ? '' : 's'}
-                        </Badge>
-                      </div>
-                    </div>
+                {titleInfo.seasons.map(season => {
+                  const isExpanded = expandedSeasons.has(season.seasonId);
+                  const toggleSeason = () => {
+                    const newExpanded = new Set(expandedSeasons);
+                    if (isExpanded) {
+                      newExpanded.delete(season.seasonId);
+                    } else {
+                      newExpanded.add(season.seasonId);
+                    }
+                    setExpandedSeasons(newExpanded);
+                  };
 
-                    {season.episodes.length ? (
-                      <div className="divide-y divide-border/70">
-                        {season.episodes.map((episode, episodeIndex) => (
-                          <EpisodeLink
-                            key={episode.episodeId}
-                            episodeId={episode.episodeId}
-                            className="block bg-background/15 px-5 py-4 hover:bg-white/5">
-                            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_160px_180px] lg:items-center">
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-text">
-                                  {episodeIndex + 1}. {episode.name?.trim() || `Episode ${episodeIndex + 1}`}
+                  return (
+                    <section
+                      key={season.seasonId}
+                      className="overflow-hidden rounded-3xl border border-border/80 bg-background/25">
+                      <button
+                        onClick={toggleSeason}
+                        className="w-full border-b border-border/70 bg-background/35 px-5 py-4 text-left transition-colors hover:bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/30">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.2em] text-muted">
+                              Season {season.ordinalNumber}
+                            </div>
+                            <h3 className="mt-2 text-xl font-semibold text-text">
+                              {season.name?.trim() || `Season ${season.ordinalNumber}`}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge tone="accent">
+                              {season.episodes.length} episode{season.episodes.length === 1 ? '' : 's'}
+                            </Badge>
+                            <svg
+                              aria-hidden="true"
+                              className={`h-5 w-5 shrink-0 transition-transform text-muted ${
+                                isExpanded ? 'rotate-180' : ''
+                              }`}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+
+                      {isExpanded && season.episodes.length ? (
+                        <div className="divide-y divide-border/70">
+                          {season.episodes.map((episode, episodeIndex) => (
+                            <EpisodeLink
+                              key={episode.episodeId}
+                              episodeId={episode.episodeId}
+                              className="block bg-background/15 px-5 py-4 hover:bg-white/5">
+                              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_160px_180px] lg:items-center">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-text">
+                                    {episodeIndex + 1}. {episode.name?.trim() || `Episode ${episodeIndex + 1}`}
+                                  </div>
+                                </div>
+                                <div className="text-sm text-muted">{formatRuntime(episode.runtime)}</div>
+                                <div className="text-sm text-muted">
+                                  {formatGenericRating(episode.avgVote)} average
                                 </div>
                               </div>
-                              <div className="text-sm text-muted">{formatRuntime(episode.runtime)}</div>
-                              <div className="text-sm text-muted">
-                                {formatGenericRating(episode.avgVote)} average
-                              </div>
-                            </div>
-                          </EpisodeLink>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="px-5 py-4 text-sm text-muted">Episodes are not available for this season yet.</div>
-                    )}
-                  </section>
-                ))}
+                            </EpisodeLink>
+                          ))}
+                        </div>
+                      ) : isExpanded ? (
+                        <div className="px-5 py-4 text-sm text-muted">Episodes are not available for this season yet.</div>
+                      ) : null}
+                    </section>
+                  );
+                })}
               </div>
             </div>
           </Card>
+          </div>
         ) : null}
 
         {isEpisodeRoute && episodeInfo ? (
@@ -955,6 +997,7 @@ export function TitlePage() {
                       <TitleLink
                         titleId={episodeInfo.season.titleId}
                         titleName={episodeInfo.season.name?.trim() || `Season ${episodeInfo.season.ordinalNumber}`}
+                        hash="#seasons"
                       />
                     </div>
                   </div>
