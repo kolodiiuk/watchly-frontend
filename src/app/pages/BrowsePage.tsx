@@ -8,6 +8,8 @@ import {
   type FilterRequest,
   SortBy,
   useFilterTitlesQuery,
+  useGetKeywordSuggestionsQuery,
+  useGetSpokenLanguagesQuery,
   useSearchTitlesQuery,
 } from '../api/catalogApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
@@ -30,6 +32,18 @@ interface Genre
 {
   id: number;
   name: string;
+}
+
+interface FilterOption
+{
+  id: number;
+  name: string;
+}
+
+interface PersistedFilter extends FilterRequest
+{
+  keywordSelections?: FilterOption[];
+  spokenLanguageSelections?: FilterOption[];
 }
 
 const genreOptions: Genre[] = [
@@ -146,6 +160,7 @@ const genreOptions: Genre[] = [
     "name": "Musical"
   }
 ]
+
 const pageSizes = [12, 20, 24, 40];
 
 function toggleNumber(list: number[], value: number)
@@ -169,15 +184,98 @@ const getSortByEnumValue = (value: string): SortBy =>
   return SortBy.Id;
 };
 
+interface SearchableMultiSelectProps
+{
+  title: string;
+  placeholder: string;
+  options: FilterOption[];
+  selectedOptions?: FilterOption[];
+  selected: number[];
+  query: string;
+  disabled: boolean;
+  onQueryChange: (value: string) => void;
+  onToggle: (value: number) => void;
+}
+
+function SearchableMultiSelect({
+  title,
+  placeholder,
+  options,
+  selectedOptions,
+  selected,
+  query,
+  disabled,
+  onQueryChange,
+  onToggle
+}: SearchableMultiSelectProps)
+{
+  const resolvedSelectedOptions = selectedOptions ?? options.filter(option => selected.includes(option.id));
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleOptions = normalizedQuery.length > 0
+    ? options.filter(option => option.name.toLowerCase().includes(normalizedQuery))
+    : options.slice(0, 8);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted">{title}</p>
+      <input
+        className="w-full rounded-2xl border border-border bg-background/60 px-3 py-2 text-sm text-text outline-none focus:border-primary"
+        type="text"
+        placeholder={placeholder}
+        value={query}
+        onChange={event => onQueryChange(event.target.value)}
+        disabled={disabled}
+      />
+      {resolvedSelectedOptions.length ? (
+        <div className="flex flex-wrap gap-2">
+          {resolvedSelectedOptions.map(option => (
+            <button
+              key={option.id}
+              className="rounded-xl border border-border bg-surface px-2 py-1 text-xs text-text transition hover:border-primary"
+              type="button"
+              onClick={() => onToggle(option.id)}
+              disabled={disabled}
+            >
+              {option.name} x
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="max-h-36 overflow-y-auto rounded-2xl border border-border bg-background/60">
+        {visibleOptions.length ? (
+          visibleOptions.map(option => (
+            <button
+              key={option.id}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-text transition hover:bg-surface"
+              type="button"
+              onClick={() => onToggle(option.id)}
+              disabled={disabled}
+            >
+              <span>{option.name}</span>
+              {selected.includes(option.id) ? <span className="text-primary">Selected</span> : null}
+            </button>
+          ))
+        ) : (
+          <div className="px-3 py-2 text-sm text-muted">No matches</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function BrowsePage()
 {
   const storedFilter = localStorage.getItem('filter');
   let initialFilter;
   if (storedFilter)
   {
-    const parsed: FilterRequest = JSON.parse(storedFilter);
+    const parsed: PersistedFilter = JSON.parse(storedFilter);
     initialFilter = {
       genres: parsed.genres ?? [],
+      keywords: parsed.keywords ?? [],
+      keywordSelections: parsed.keywordSelections ?? [],
+      spokenLanguages: parsed.spokenLanguages ?? [],
+      spokenLanguageSelections: parsed.spokenLanguageSelections ?? [],
       titleTypes: parsed.titleTypes ?? [],
       yearStart: parsed.yearsRange?.start ?? 1800,
       yearEnd: parsed.yearsRange?.end ?? 2026,
@@ -191,6 +289,10 @@ export function BrowsePage()
   {
     initialFilter = {
       genres: [],
+      keywords: [],
+      keywordSelections: [],
+      spokenLanguages: [],
+      spokenLanguageSelections: [],
       titleTypes: [],
       yearStart: 1800,
       yearEnd: 2026,
@@ -206,6 +308,8 @@ export function BrowsePage()
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<number[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<number[]>(initialFilter.keywords);
+  const [selectedSpokenLanguages, setSelectedSpokenLanguages] = useState<number[]>(initialFilter.spokenLanguages);
   const [yearStart, setYearStart] = useState('');
   const [yearEnd, setYearEnd] = useState('');
   const [ratingStart, setRatingStart] = useState('');
@@ -216,10 +320,53 @@ export function BrowsePage()
 
   const [pendingGenres, setPendingGenres] = useState<number[]>(initialFilter.genres);
   const [pendingTypes, setPendingTypes] = useState<number[]>(initialFilter.titleTypes);
+  const [pendingKeywords, setPendingKeywords] = useState<number[]>(initialFilter.keywords);
+  const [pendingSpokenLanguages, setPendingSpokenLanguages] = useState<number[]>(initialFilter.spokenLanguages);
   const [pendingYearStart, setPendingYearStart] = useState<string>(initialFilter.yearStart.toString());
   const [pendingYearEnd, setPendingYearEnd] = useState<string>(initialFilter.yearEnd.toString());
   const [pendingRatingStart, setPendingRatingStart] = useState<string>(initialFilter.ratingStart.toString());
   const [pendingRatingEnd, setPendingRatingEnd] = useState<string>(initialFilter.ratingEnd.toString());
+  const [keywordQuery, setKeywordQuery] = useState('');
+  const [spokenLanguageQuery, setSpokenLanguageQuery] = useState('');
+  const [selectedKeywordEntries, setSelectedKeywordEntries] = useState<FilterOption[]>(initialFilter.keywordSelections);
+  const [selectedSpokenLanguageEntries, setSelectedSpokenLanguageEntries] = useState<FilterOption[]>(initialFilter.spokenLanguageSelections);
+
+  const trimmedKeywordQuery = keywordQuery.trim();
+  const keywordSuggestionsQuery = useGetKeywordSuggestionsQuery(trimmedKeywordQuery, {skip: trimmedKeywordQuery.length === 0});
+  const spokenLanguagesQuery = useGetSpokenLanguagesQuery();
+  const keywordSuggestions = keywordSuggestionsQuery.data ?? [];
+  const spokenLanguageOptions: FilterOption[] = spokenLanguagesQuery.data ?? [];
+  const keywordOptions: FilterOption[] = keywordSuggestions;
+  const selectedKeywordOptions = pendingKeywords.map(keywordId =>
+  {
+    const fromSuggestions = keywordSuggestions.find(keyword => keyword.id === keywordId);
+    const fromSelectedCache = selectedKeywordEntries.find(keyword => keyword.id === keywordId);
+    if (fromSuggestions)
+    {
+      return fromSuggestions;
+    }
+    if (fromSelectedCache)
+    {
+      return fromSelectedCache;
+    }
+
+    return {id: keywordId, name: `Keyword #${keywordId}`};
+  });
+  const selectedSpokenLanguageOptions = pendingSpokenLanguages.map(languageId =>
+  {
+    const fromOptions = spokenLanguageOptions.find(language => language.id === languageId);
+    const fromSelectedCache = selectedSpokenLanguageEntries.find(language => language.id === languageId);
+    if (fromOptions)
+    {
+      return fromOptions;
+    }
+    if (fromSelectedCache)
+    {
+      return fromSelectedCache;
+    }
+
+    return {id: languageId, name: `Language #${languageId}`};
+  });
 
   const hasSearch = searchTerm.trim().length > 0;
   const filtersDisabled = hasSearch;
@@ -228,13 +375,19 @@ export function BrowsePage()
   {
     setSelectedGenres(pendingGenres);
     setSelectedTypes(pendingTypes);
+    setSelectedKeywords(pendingKeywords);
+    setSelectedSpokenLanguages(pendingSpokenLanguages);
     setYearStart(pendingYearStart);
     setYearEnd(pendingYearEnd);
     setRatingStart(pendingRatingStart);
     setRatingEnd(pendingRatingEnd);
     setPage(1);
-    const filter: FilterRequest = {
+    const filter: PersistedFilter = {
       genres: pendingGenres.length ? pendingGenres : undefined,
+      keywords: pendingKeywords.length ? pendingKeywords : undefined,
+      keywordSelections: pendingKeywords.length ? selectedKeywordOptions : undefined,
+      spokenLanguages: pendingSpokenLanguages.length ? pendingSpokenLanguages : undefined,
+      spokenLanguageSelections: pendingSpokenLanguages.length ? selectedSpokenLanguageOptions : undefined,
       titleTypes: pendingTypes.length ? pendingTypes : undefined,
       yearsRange: pendingYearStart && pendingYearEnd ? {
         start: Number(pendingYearStart),
@@ -258,6 +411,8 @@ export function BrowsePage()
 
     return {
       genres: selectedGenres.length ? selectedGenres : undefined,
+      keywords: selectedKeywords.length ? selectedKeywords : undefined,
+      spokenLanguages: selectedSpokenLanguages.length ? selectedSpokenLanguages : undefined,
       titleTypes: selectedTypes.length ? selectedTypes : undefined,
       yearsRange,
       ratingRange,
@@ -265,7 +420,7 @@ export function BrowsePage()
       size,
       sortBy,
     };
-  }, [page, ratingEnd, ratingStart, selectedGenres, selectedTypes, size, sortBy, yearEnd, yearStart]);
+  }, [page, ratingEnd, ratingStart, selectedGenres, selectedKeywords, selectedSpokenLanguages, selectedTypes, size, sortBy, yearEnd, yearStart]);
 
   const searchQuery = useSearchTitlesQuery(
     {term: searchTerm, page, pageSize: size},
@@ -299,16 +454,24 @@ export function BrowsePage()
   {
     setSelectedGenres([]);
     setSelectedTypes([]);
+    setSelectedKeywords([]);
+    setSelectedSpokenLanguages([]);
     setYearStart('');
     setYearEnd('');
     setRatingStart('');
     setRatingEnd('');
     setPendingGenres([]);
     setPendingTypes([]);
+    setPendingKeywords([]);
+    setPendingSpokenLanguages([]);
     setPendingYearStart('');
     setPendingYearEnd('');
     setPendingRatingStart('');
     setPendingRatingEnd('');
+    setKeywordQuery('');
+    setSpokenLanguageQuery('');
+    setSelectedKeywordEntries([]);
+    setSelectedSpokenLanguageEntries([]);
     setPage(1);
   };
 
@@ -380,6 +543,58 @@ export function BrowsePage()
                   ))}
                 </div>
               </div>
+
+              <SearchableMultiSelect
+                title="Keywords"
+                placeholder="Search keywords"
+                options={keywordOptions}
+                selected={pendingKeywords}
+                query={keywordQuery}
+                disabled={filtersDisabled}
+                onQueryChange={setKeywordQuery}
+                onToggle={value =>
+                {
+                  if (filtersDisabled)
+                  {
+                    return;
+                  }
+                  setPendingKeywords(prev => toggleNumber(prev, value));
+                  const suggestion = keywordSuggestions.find(item => item.id === value);
+                  if (suggestion)
+                  {
+                    setSelectedKeywordEntries(prev =>
+                      prev.some(item => item.id === suggestion.id) ? prev : [...prev, suggestion]
+                    );
+                  }
+                }}
+                selectedOptions={selectedKeywordOptions}
+              />
+
+              <SearchableMultiSelect
+                title="Spoken languages"
+                placeholder="Search languages"
+                options={spokenLanguageOptions}
+                selected={pendingSpokenLanguages}
+                query={spokenLanguageQuery}
+                disabled={filtersDisabled}
+                onQueryChange={setSpokenLanguageQuery}
+                onToggle={value =>
+                {
+                  if (filtersDisabled)
+                  {
+                    return;
+                  }
+                  setPendingSpokenLanguages(prev => toggleNumber(prev, value));
+                  const language = spokenLanguageOptions.find(item => item.id === value);
+                  if (language)
+                  {
+                    setSelectedSpokenLanguageEntries(prev =>
+                      prev.some(item => item.id === language.id) ? prev : [...prev, language]
+                    );
+                  }
+                }}
+                selectedOptions={selectedSpokenLanguageOptions}
+              />
 
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted">Release year</p>

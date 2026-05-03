@@ -1,7 +1,4 @@
-import type { Genre } from "./Genre";
-import type { ProductionCompany } from "./ProductionCompany";
 import type { SeasonInfo } from "./SeasonInfo";
-import type { SpokenLanguage } from "./Spokenlanguage";
 import type { TitleType } from "./TitleType";
 
 export interface TitleInfo {
@@ -20,10 +17,10 @@ export interface TitleInfo {
   localizationLanguages: string;
   avgVote: number;
   voteCount: number;
-  productionCompanies: ProductionCompany[];
-  genres: Genre[];
+  productionCompanies: string[];
+  genres: string[];
   seasons: SeasonInfo[];
-  spokenLanguages: SpokenLanguage[];
+  spokenLanguages: string[];
 }
 
 export interface TitleShortInfo {
@@ -32,5 +29,3 @@ export interface TitleShortInfo {
   posterUrl?: string | null;
   avgTmdbRating?: number | null;
 }
-
-

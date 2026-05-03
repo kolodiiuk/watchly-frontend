@@ -8,6 +8,9 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { SignInPage } from '../../features/auth/pages/SignInPage.tsx';
 import { SignUpPage } from '../../features/auth/pages/SignUpPage.tsx';
 import { TitlePage } from '../pages/TitlePage.tsx';
+import { MoviePage } from '../pages/MoviePage.tsx';
+import { SeriesPage } from '../pages/SeriesPage.tsx';
+import { EpisodePage } from '../pages/EpisodePage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -26,8 +29,16 @@ const router = createBrowserRouter([
         element: <TitlePage />,
       },
       {
+        path: 'movie/:titleId',
+        element: <MoviePage />,
+      },
+      {
+        path: 'series/:titleId',
+        element: <SeriesPage />,
+      },
+      {
         path: 'episode/:episodeId',
-        element: <TitlePage />,
+        element: <EpisodePage />,
       },
       {
         path: 'auth',
