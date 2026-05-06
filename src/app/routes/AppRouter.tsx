@@ -4,9 +4,11 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import { BrowsePage } from '../pages/BrowsePage';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../../shared/NotFoundPage.tsx';
-import { ProfilePage } from '../pages/ProfilePage';
+import { ProfilePage } from '../../features/profile/pages/ProfilePage';
 import { SignInPage } from '../../features/auth/pages/SignInPage.tsx';
 import { SignUpPage } from '../../features/auth/pages/SignUpPage.tsx';
+import { ForgetPasswordPage } from '../../features/auth/pages/ForgetPasswordPage.tsx';
+import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -21,6 +23,10 @@ const router = createBrowserRouter([
         element: <BrowsePage />,
       },
       {
+        path: 'users/reset-password',
+        element: <ResetPasswordPage />,
+      },
+      {
         path: 'auth',
         element: <AuthLayout />,
         children: [
@@ -31,6 +37,10 @@ const router = createBrowserRouter([
           {
             path: 'sign-up',
             element: <SignUpPage />,
+          },
+          {
+            path: 'forget-password',
+            element: <ForgetPasswordPage />,
           },
         ],
       },
@@ -47,6 +57,14 @@ const router = createBrowserRouter([
         path: 'profile',
         element: <ProfilePage />,
       },
+      // {
+      //   path: 'wathlists',
+      //   element:
+      // },
+      // {
+      //   path: 'stats',
+      //   element:
+      // }
     ],
   },
   // {

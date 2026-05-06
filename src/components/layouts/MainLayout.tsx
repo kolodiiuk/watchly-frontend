@@ -1,5 +1,4 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { ButtonLink } from '../ui/ButtonLink';
 import { useAuth } from '../../features/auth/services/AuthProvider.tsx';
@@ -41,7 +40,6 @@ export function MainLayout() {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <Badge tone="accent">{user.userName}</Badge>
                 <NavLink to="/profile" className={navLinkClass}>
                   Profile
                 </NavLink>
