@@ -42,6 +42,7 @@ const router = createBrowserRouter([
         path: 'episode/:episodeId',
         element: <EpisodePage />,
       },
+      {
         path: 'users/reset-password',
         element: <ResetPasswordPage />,
       },
