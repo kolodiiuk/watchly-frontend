@@ -19,7 +19,7 @@ export interface CommentDto {
   userId: string;
   updatedAt: string;
   text: string;
-  userDto: User;
+  user?: User | null;
 }
 
 export const commentApi = baseApi.injectEndpoints({

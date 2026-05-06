@@ -1,27 +1,7 @@
 import { baseApi } from './baseApi.ts';
-
-export interface TitleShortInfo {
-  id: number;
-  name: string;
-  posterUrl?: string | null;
-  avgTmdbRating?: number | null;
-}
-
-export interface TitleInfo {
-  id: number;
-  name: string;
-  overview?: string | null;
-  posterUrl?: string | null;
-  releaseDate?: string | null;
-  runtime: number;
-  avgTmdbRating?: number | null;
-}
-
-export interface EpisodeInfo {
-  titleId: number;
-  seasonId: number;
-  episodeId: number;
-}
+import type { EpisodeInfo } from '../models/EpisodeInfo.ts';
+import type { TitleInfo, TitleShortInfo } from '../models/TitleInfo.ts';
+import type { SpokenLanguage } from '../models/SpokenLanguage.tsx';
 
 export interface SearchParams {
   term?: string;
@@ -39,6 +19,16 @@ export interface FloatRange {
   end: number;
 }
 
+export const SortBy = {
+  ReleaseDateAsc: 0,
+  TmdbRatingAsc: 1,
+  ReleaseDateDesc: 2,
+  TmdbRatingDesc: 3,
+  Id: 4
+} as const;
+
+export type SortBy = (typeof SortBy)[keyof typeof SortBy];
+
 export interface FilterRequest {
   genres?: number[];
   keywords?: number[];
@@ -48,7 +38,13 @@ export interface FilterRequest {
   ratingRange?: FloatRange;
   page?: number;
   size?: number;
+  sortBy?: SortBy;
   [key: string]: any;
+}
+
+export interface Keyword {
+  id: number;
+  name: string;
 }
 
 function buildQueryString(params: Record<string, any>) {
@@ -92,8 +88,24 @@ export const catalogApi = baseApi.injectEndpoints({
     getEpisode: builder.query<EpisodeInfo, number>({
       query: episodeId => ({ url: `catalog/episode/${episodeId}`, method: 'GET' }),
     }),
+    getKeywordSuggestions: builder.query<Keyword[], string>({
+      query: term => {
+        const qs = buildQueryString({ term });
+        return { url: `catalog/keyword-suggestions${qs}`, method: 'GET' };
+      },
+    }),
+    getSpokenLanguages: builder.query<SpokenLanguage[], void>({
+      query: () => ({ url: 'catalog/spoken-languages', method: 'GET' }),
+    }),
   }),
   overrideExisting: false,
 });
 
-export const { useSearchTitlesQuery, useFilterTitlesQuery, useGetTitleQuery, useGetEpisodeQuery } = catalogApi;
+export const {
+  useSearchTitlesQuery,
+  useFilterTitlesQuery,
+  useGetTitleQuery,
+  useGetEpisodeQuery,
+  useGetKeywordSuggestionsQuery,
+  useGetSpokenLanguagesQuery
+} = catalogApi;
