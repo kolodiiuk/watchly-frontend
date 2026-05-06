@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react';
 import type {FormEvent} from 'react';
 import {Link} from 'react-router-dom';
+import {Eye, EyeOff} from 'lucide-react';
 import {Badge} from '../../components/ui/Badge';
 import {Button} from '../../components/ui/Button';
 import {Card} from '../../components/ui/Card';
@@ -182,6 +183,12 @@ const getSortByEnumValue = (value: string): SortBy =>
     return num as SortBy;
   }
   return SortBy.Id;
+};
+
+const getIsTitleWatched = (_titleId: number): boolean =>
+{
+  // stub: replace with actual watched-state lookup when API is wired
+  return false;
 };
 
 interface SearchableMultiSelectProps
@@ -762,7 +769,13 @@ export function BrowsePage()
             {titles.map(title => (
               <Link key={title.id} to={`/title/${title.id}`} className="group">
                 <Card className="flex h-full flex-col p-4 transition hover:border-primary/50" tone="base">
-                  <div className="aspect-2/3 w-full overflow-hidden rounded-2xl bg-surface">
+                  <div className="relative aspect-2/3 w-full overflow-hidden rounded-2xl bg-surface">
+                    <Badge
+                      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border-white/50 bg-black/55 p-0 text-white backdrop-blur-sm"
+                      tone={getIsTitleWatched(title.id) ? 'success' : 'default'}
+                    >
+                      {getIsTitleWatched(title.id) ? <Eye className="h-5 w-5" aria-hidden="true"/> : <EyeOff className="h-5 w-5" aria-hidden="true"/>}
+                    </Badge>
                     {title.posterUrl ? (
                       <img
                         alt={title.name}

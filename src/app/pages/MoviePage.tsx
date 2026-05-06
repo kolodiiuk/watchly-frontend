@@ -1,13 +1,12 @@
-import {type ChangeEvent, useEffect, useState} from 'react';
+import {type ChangeEvent, useState} from 'react';
 import {useParams} from 'react-router-dom';
 import {useAuth} from '../../features/auth/services/AuthProvider.tsx';
 import {Badge} from '../../components/ui/Badge.tsx';
-import {Button} from '../../components/ui/Button.tsx';
 import {Card} from '../../components/ui/Card.tsx';
 import {useGetTitleQuery} from '../api/catalogApi.ts';
-import {useVoteTitleMutation} from '../api/voteApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
 import {WatchStatus} from '../models/WatchStatus.ts';
+import {WatchProgressButton} from '../components/watch-progress/WatchProgressButton.tsx';
 import {
   formatGenericRating,
   formatRating,
@@ -33,24 +32,17 @@ export function MoviePage()
   const {titleId: titleIdParam} = useParams<{ titleId?: string }>();
   const contentId = Number(titleIdParam);
   const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, user} = useAuth();
+  const userId = user?.id;
   const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch);
-  const [selectedVoteValue, setSelectedVoteValue] = useState(8);
-  const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
-  const [voteError, setVoteError] = useState<string | null>(null);
-  const [voteMessage, setVoteMessage] = useState<string | null>(null);
 
   const {data: titleInfo, isLoading, isError} = useGetTitleQuery(contentId, {skip: !hasValidContentId});
-  const [voteTitle, {isLoading: isSubmittingVote}] = useVoteTitleMutation();
-
-  useEffect(() =>
-  {
-    setHasSubmittedVote(false);
-    setVoteError(null);
-    setVoteMessage(null);
-  }, [contentId]);
 
   const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) =>
+  {
+  };
+
+  const handleMovieWatched = (_watchCount: number, _userId: string) =>
   {
   };
 
@@ -59,44 +51,6 @@ export function MoviePage()
     const nextStatus = Number(event.target.value) as WatchStatus;
     setSelectedWatchStatus(nextStatus);
     handleWatchStatusChange(contentId, nextStatus);
-  };
-
-  const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) =>
-  {
-    setSelectedVoteValue(Number(event.target.value));
-    setVoteError(null);
-    setVoteMessage(null);
-  };
-
-  const handleVoteSubmit = async () =>
-  {
-    setVoteError(null);
-    setVoteMessage(null);
-
-    if (!isAuthenticated)
-    {
-      setVoteError('Please sign in to rate this title.');
-      return;
-    }
-
-    if (hasSubmittedVote)
-    {
-      setVoteError('Changing an existing vote needs vote lookup support from the current API.');
-      return;
-    }
-
-    try
-    {
-      await voteTitle({
-        titleId: contentId,
-        value: selectedVoteValue,
-      }).unwrap();
-      setHasSubmittedVote(true);
-      setVoteMessage(`Your rating of ${selectedVoteValue}/10 has been submitted.`);
-    } catch
-    {
-      setVoteError('We could not submit your vote right now.');
-    }
   };
 
   const castMembers = splitDisplayValues(titleInfo?.actors);
@@ -149,26 +103,6 @@ export function MoviePage()
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Average TMDB rating</div><div className="mt-2 text-lg font-semibold text-text">{formatRating(titleInfo.avgTmdbRating)}</div></div>
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Average Watchly rating</div><div className="mt-2 text-lg font-semibold text-text">{`${formatGenericRating(titleInfo.avgVote)} (${formatVoteCount(titleInfo.voteCount)})`}</div></div>
               </div>
-              <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
-                <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                <label className="block mt-3">
-                  <span className="text-xs uppercase tracking-[0.2em] text-muted">Watch status</span>
-                  <select value={selectedWatchStatus} onChange={onWatchStatusSelect} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text">
-                    {watchStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <div className="grid gap-3 mt-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                  <label className="block">
-                    <span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span>
-                    <select value={selectedVoteValue} onChange={onVoteValueSelect} disabled={!isAuthenticated || isSubmittingVote} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text disabled:opacity-70">
-                      {Array.from({length: 10}, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} / 10</option>)}
-                    </select>
-                  </label>
-                  <Button type="button" onClick={handleVoteSubmit} disabled={isSubmittingVote || !isAuthenticated} className="lg:min-w-[150px]">{hasSubmittedVote ? 'Change vote' : 'Submit vote'}</Button>
-                </div>
-                {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
-                {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
-              </div>
               <div className="grid gap-3 lg:grid-cols-2">
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Director</div><div className="mt-2 text-lg font-semibold text-text">{formatTextOrUnavailable(titleInfo.director)}</div></div>
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Type</div><div className="mt-2 text-lg font-semibold text-text">{getContentType(false, titleInfo.titleType)}</div></div>
@@ -178,6 +112,20 @@ export function MoviePage()
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Genres</div><div className="mt-3 flex flex-wrap gap-2">{genres.map(genre => <span key={genre} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{genre}</span>)}</div></div>
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Production companies</div><div className="mt-3 flex flex-wrap gap-2">{productionCompanies.map(company => <span key={company} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{company}</span>)}</div></div>
               </div>
+              {isAuthenticated && userId ? (
+                <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
+                  <p className="text-sm uppercase tracking-[0.24em] text-accent">Watching progress</p>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                    <label className="block">
+                      <span className="text-xs uppercase tracking-[0.2em] text-muted">Status</span>
+                      <select value={selectedWatchStatus} onChange={onWatchStatusSelect} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text">
+                        {watchStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <WatchProgressButton userId={userId} itemLabel="movie" onMarkWatched={handleMovieWatched} className="lg:min-w-[220px]"/>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </Card>

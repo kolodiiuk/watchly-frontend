@@ -9,6 +9,7 @@ import {useVoteEpisodeMutation} from '../api/voteApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
 import {formatGenericRating, formatVoteCount, getFullImageUrl} from '../../utils/formatters.ts';
 import CommentSection from './CommentSection';
+import {WatchProgressButton} from '../components/watch-progress/WatchProgressButton.tsx';
 
 function TitleLink({titleId, titleName, hash}: { titleId: number; titleName: string; hash?: string })
 {
@@ -20,7 +21,8 @@ export function EpisodePage()
   const {episodeId: episodeIdParam} = useParams<{ episodeId?: string }>();
   const contentId = Number(episodeIdParam);
   const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, user} = useAuth();
+  const userId = user?.id;
   const [selectedVoteValue, setSelectedVoteValue] = useState(8);
   const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
@@ -67,6 +69,10 @@ export function EpisodePage()
     }
   };
 
+  const handleEpisodeWatched = (_watchCount: number, _userId: string) =>
+  {
+  };
+
   if (!hasValidContentId)
   {
     return <main className="px-4 py-6 sm:px-6 lg:px-10"><Card tone="raised"><h1 className="text-3xl font-semibold text-text">We could not load this episode.</h1></Card></main>;
@@ -108,6 +114,7 @@ export function EpisodePage()
                 </div>
                 {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
                 {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
+                {isAuthenticated && userId ? <div className="mt-3"><WatchProgressButton userId={userId} itemLabel="episode" onMarkWatched={handleEpisodeWatched}/></div> : null}
               </div>
             </div>
           </div>

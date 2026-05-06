@@ -1,5 +1,5 @@
-import {type ChangeEvent, type ReactNode, useEffect, useRef, useState} from 'react';
-import {Link, useParams} from 'react-router-dom';
+import {type ChangeEvent, useEffect, useRef, useState} from 'react';
+import {useParams} from 'react-router-dom';
 import {useAuth} from '../../features/auth/services/AuthProvider.tsx';
 import {Badge} from '../../components/ui/Badge.tsx';
 import {Button} from '../../components/ui/Button.tsx';
@@ -7,31 +7,19 @@ import {Card} from '../../components/ui/Card.tsx';
 import {useGetTitleQuery} from '../api/catalogApi.ts';
 import {useVoteTitleMutation} from '../api/voteApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
-import {WatchStatus} from '../models/WatchStatus.ts';
 import {formatGenericRating, formatRating, formatReleaseDate, formatRuntime, formatTextOrUnavailable, formatVoteCount, getFullImageUrl, splitDisplayValues} from '../../utils/formatters.ts';
 import CommentSection from './CommentSection';
-
-const watchStatusOptions = [
-  {value: WatchStatus.PlanToWatch, label: 'Plan to watch'},
-  {value: WatchStatus.Watching, label: 'Watching'},
-  {value: WatchStatus.Completed, label: 'Completed'},
-  {value: WatchStatus.Dropped, label: 'Dropped'},
-];
-
-function EpisodeLink({episodeId, children, className = ''}: { episodeId: number; children: ReactNode; className?: string })
-{
-  return <Link to={`/episode/${episodeId}`} className={['transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30', className].filter(Boolean).join(' ')}>{children}</Link>;
-}
+import {WatchProgressButton} from '../components/watch-progress/WatchProgressButton.tsx';
+import {SeriesSeasonsAccordion} from '../components/watch-progress/SeriesSeasonsAccordion.tsx';
 
 export function SeriesPage()
 {
   const {titleId: titleIdParam} = useParams<{ titleId?: string }>();
   const contentId = Number(titleIdParam);
   const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, user} = useAuth();
+  const userId = user?.id;
   const seasonsRef = useRef<HTMLDivElement>(null);
-  const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
-  const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch);
   const [selectedVoteValue, setSelectedVoteValue] = useState(8);
   const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
@@ -55,17 +43,6 @@ export function SeriesPage()
       setTimeout(() => seasonsRef.current?.scrollIntoView({behavior: 'smooth'}), 0);
     }
   }, [titleInfo]);
-
-  const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) =>
-  {
-  };
-
-  const onWatchStatusSelect = (event: ChangeEvent<HTMLSelectElement>) =>
-  {
-    const nextStatus = Number(event.target.value) as WatchStatus;
-    setSelectedWatchStatus(nextStatus);
-    handleWatchStatusChange(contentId, nextStatus);
-  };
 
   const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) =>
   {
@@ -100,6 +77,10 @@ export function SeriesPage()
     {
       setVoteError('We could not submit your vote right now.');
     }
+  };
+
+  const handleSeriesWatched = (_watchCount: number, _userId: string) =>
+  {
   };
 
   const castMembers = splitDisplayValues(titleInfo?.actors);
@@ -154,64 +135,28 @@ export function SeriesPage()
               </div>
               <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
                 <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                <label className="block mt-3"><span className="text-xs uppercase tracking-[0.2em] text-muted">Watch status</span><select value={selectedWatchStatus} onChange={onWatchStatusSelect} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text">{watchStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                <div className="grid gap-3 mt-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                   <label className="block"><span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span><select value={selectedVoteValue} onChange={onVoteValueSelect} disabled={!isAuthenticated || isSubmittingVote} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text disabled:opacity-70">{Array.from({length: 10}, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} / 10</option>)}</select></label>
                   <Button type="button" onClick={handleVoteSubmit} disabled={isSubmittingVote || !isAuthenticated} className="lg:min-w-[150px]">{hasSubmittedVote ? 'Change vote' : 'Submit vote'}</Button>
                 </div>
                 {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
                 {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
+                {isAuthenticated && userId ? <div className="mt-3"><WatchProgressButton userId={userId} itemLabel="series" onMarkWatched={handleSeriesWatched}/></div> : null}
               </div>
             </div>
           </div>
         </Card>
-        {titleInfo.seasons.length ? (
-          <div ref={seasonsRef}>
-            <Card tone="glass" className="relative overflow-hidden">
-              <div className="relative space-y-6">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div><p className="text-sm uppercase tracking-[0.24em] text-muted">Seasons and episodes</p><h2 className="mt-2 text-2xl font-semibold text-text">Browse the series run</h2></div>
-                  <Badge tone="default">{titleInfo.seasons.length} season{titleInfo.seasons.length === 1 ? '' : 's'}</Badge>
-                </div>
-                <div className="space-y-4">
-                  {titleInfo.seasons.map(season =>
-                  {
-                    const isExpanded = expandedSeasons.has(season.seasonId);
-                    const toggleSeason = () =>
-                    {
-                      const newExpanded = new Set(expandedSeasons);
-                      if (isExpanded) { newExpanded.delete(season.seasonId); } else { newExpanded.add(season.seasonId); }
-                      setExpandedSeasons(newExpanded);
-                    };
-                    return (
-                      <section key={season.seasonId} className="overflow-hidden rounded-3xl border border-border/80 bg-background/25">
-                        <button onClick={toggleSeason} className="w-full border-b border-border/70 bg-background/35 px-5 py-4 text-left">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div><div className="text-xs uppercase tracking-[0.2em] text-muted">Season {season.ordinalNumber}</div><h3 className="mt-2 text-xl font-semibold text-text">{season.name?.trim() || `Season ${season.ordinalNumber}`}</h3></div>
-                            <Badge tone="accent">{season.episodes.length} episode{season.episodes.length === 1 ? '' : 's'}</Badge>
-                          </div>
-                        </button>
-                        {isExpanded && season.episodes.length ? (
-                          <div className="divide-y divide-border/70">
-                            {season.episodes.map((episode, episodeIndex) => (
-                              <EpisodeLink key={episode.episodeId} episodeId={episode.episodeId} className="block bg-background/15 px-5 py-4 hover:bg-white/5">
-                                <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.5fr)_160px_180px] lg:items-center">
-                                  <div className="text-sm font-semibold text-text">{episodeIndex + 1}. {episode.name?.trim() || `Episode ${episodeIndex + 1}`}</div>
-                                  <div className="text-sm text-muted">{formatRuntime(episode.runtime)}</div>
-                                  <div className="text-sm text-muted">{formatGenericRating(episode.avgVote)} average</div>
-                                </div>
-                              </EpisodeLink>
-                            ))}
-                          </div>
-                        ) : null}
-                      </section>
-                    );
-                  })}
-                </div>
+        <div ref={seasonsRef}>
+          <Card tone="glass" className="relative overflow-hidden">
+            <div className="relative space-y-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div><p className="text-sm uppercase tracking-[0.24em] text-muted">Seasons and episodes</p><h2 className="mt-2 text-2xl font-semibold text-text">Browse the series run</h2></div>
+                <Badge tone="default">{titleInfo.seasons.length} season{titleInfo.seasons.length === 1 ? '' : 's'}</Badge>
               </div>
-            </Card>
-          </div>
-        ) : null}
+              <SeriesSeasonsAccordion seasons={titleInfo.seasons}/>
+            </div>
+          </Card>
+        </div>
         <CommentSection contentId={contentId} isEpisodeRoute={false} hasValidContentId={hasValidContentId} titleType={TitleType.Series}/>
       </div>
     </main>
