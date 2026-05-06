@@ -36,7 +36,7 @@ export const usersApi = baseApi.injectEndpoints({
     updateProfilePicture: builder.mutation<void, ProfilePictureFile>({
       query: file => {
         const form = new FormData();
-        form.append('file', file, file.name);
+        form.append('file', file);
         return {
           url: `users/profile-picture`,
           method: 'PATCH',

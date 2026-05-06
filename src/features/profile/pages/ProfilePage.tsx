@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../auth/services/AuthProvider.tsx';
-import {useChangeUsernameMutation} from "../../../app/api/usersApi.ts";
-import {useDispatch} from "react-redux";
-import {setNewUserName} from "../../auth/services/authSlice.ts";
+import {
+  useChangePasswordMutation,
+  useChangeUsernameMutation,
+  useUpdateProfilePictureMutation,
+} from '../../../app/api/usersApi.ts';
+import { useDispatch } from 'react-redux';
+import { setNewUserName } from '../../auth/services/authSlice.ts';
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -12,24 +16,68 @@ export function ProfilePage() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [usernameMessage, setUsernameMessage] = useState<string | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [profilePictureMessage, setProfilePictureMessage] = useState<string | null>(null);
   const [changeUserName] = useChangeUsernameMutation();
+  const [changePassword] = useChangePasswordMutation();
+  const [updateProfilePicture] = useUpdateProfilePictureMutation();
   const dispatch = useDispatch();
 
-  const handleChangeUsername = (e: React.FormEvent) => {
+  const handleChangeUsername = async (e: React.FormEvent) => {
     e.preventDefault();
-    changeUserName({ name: username }).then(() => {
-      dispatch(setNewUserName(username));
-    }).catch((err) => {
-      console.log(err);
-    });
+    setUsernameMessage(null);
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) {
+      setUsernameMessage('Username is required.');
+      return;
+    }
+
+    try {
+      await changeUserName({ name: trimmedUsername }).unwrap();
+      dispatch(setNewUserName(trimmedUsername));
+      setUsernameMessage('Username updated.');
+    } catch {
+      setUsernameMessage('Could not update username.');
+    }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordMessage(null);
+
+    if (!oldPassword.trim() || !newPassword.trim()) {
+      setPasswordMessage('Old and new password are required.');
+      return;
+    }
+
+    try {
+      await changePassword({ oldPassword: oldPassword.trim(), newPassword: newPassword.trim() }).unwrap();
+      setOldPassword('');
+      setNewPassword('');
+      setPasswordMessage('Password updated.');
+    } catch {
+      setPasswordMessage('Could not update password.');
+    }
   };
 
-  const handleUpdateProfilePicture = (e: React.FormEvent) => {
+  const handleUpdateProfilePicture = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    setProfilePictureMessage(null);
+    if (!profilePicture) {
+      setProfilePictureMessage('Select an image first.');
+      return;
+    }
+
+    try {
+      await updateProfilePicture(profilePicture).unwrap();
+      setProfilePicture(null);
+      setProfilePictureMessage('Profile picture updated.');
+    } catch {
+      setProfilePictureMessage('Could not update profile picture.');
+    }
   };
 
   return (
@@ -47,6 +95,7 @@ export function ProfilePage() {
             />
           </div>
           <Button type="submit">Update Username</Button>
+          {usernameMessage ? <p className="text-sm text-muted">{usernameMessage}</p> : null}
         </form>
       </Card>
 
@@ -72,6 +121,7 @@ export function ProfilePage() {
             />
           </div>
           <Button type="submit">Update Password</Button>
+          {passwordMessage ? <p className="text-sm text-muted">{passwordMessage}</p> : null}
         </form>
       </Card>
 
@@ -89,6 +139,7 @@ export function ProfilePage() {
           <Button type="submit" disabled={!profilePicture}>
             Upload Picture
           </Button>
+          {profilePictureMessage ? <p className="text-sm text-muted">{profilePictureMessage}</p> : null}
         </form>
       </Card>
     </div>
