@@ -19,26 +19,26 @@ export type ProfilePictureFile = File;
 export const usersApi = baseApi.injectEndpoints({
   endpoints: builder => ({
     verifyToken: builder.mutation<User, void>({
-      query: () => ({ url: `auth/verify`, method: 'POST' }),
+      query: () => ({ url: `users/verify`, method: 'POST' }),
     }),
     changeUsername: builder.mutation<void, ChangeUserNameRequest>({
-      query: req => ({ url: `user/change-username`, method: 'POST', body: req }),
+      query: req => ({ url: `users/change-username`, method: 'POST', body: req }),
     }),
     changePassword: builder.mutation<void, ChangePasswordRequest>({
-      query: req => ({ url: `user/change-password`, method: 'PATCH', body: req }),
+      query: req => ({ url: `users/change-password`, method: 'PATCH', body: req }),
     }),
     forgetPassword: builder.mutation<void, ForgetPasswordRequest>({
-      query: req => ({ url: `user/forget-password`, method: 'POST', body: req }),
+      query: req => ({ url: `users/forget-password`, method: 'POST', body: req }),
     }),
     resetPassword: builder.mutation<void, { token: string }>({
-      query: ({ token }) => ({ url: `user/reset-password?token=${encodeURIComponent(token)}`, method: 'POST' }),
+      query: ({ token }) => ({ url: `users/reset-password?token=${encodeURIComponent(token)}`, method: 'POST' }),
     }),
     updateProfilePicture: builder.mutation<void, ProfilePictureFile>({
       query: file => {
         const form = new FormData();
-        form.append('file', file, file.name);
+        form.append('file', file);
         return {
-          url: `user/profile-picture`,
+          url: `users/profile-picture`,
           method: 'PATCH',
           body: form,
         };

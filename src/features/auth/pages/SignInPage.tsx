@@ -76,6 +76,11 @@ export function SignInPage() {
             autoComplete="current-password"
           />
         </label>
+        <div className="-mt-1 text-right">
+          <Link className="text-sm text-accent hover:underline" to="/auth/forget-password">
+            Forget password
+          </Link>
+        </div>
 
         {error ? <p className="text-sm text-danger">{error}</p> : null}
 
