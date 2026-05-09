@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { UserLayout, AuthLayout, MainLayout } from '../../components/layouts';
+import { UserLayout, AuthLayout, MainLayout, AdminLayout } from '../../components/layouts';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { BrowsePage } from '../pages/BrowsePage';
 import { HomePage } from '../pages/HomePage';
@@ -13,6 +13,8 @@ import { SeriesPage } from '../pages/SeriesPage.tsx';
 import { EpisodePage } from '../pages/EpisodePage.tsx';
 import { ForgetPasswordPage } from '../../features/auth/pages/ForgetPasswordPage.tsx';
 import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.tsx';
+import { AdminContentPage } from '../pages/admin/AdminContentPage.tsx';
+import { UserRole } from '../models/UserRole.ts';
 
 const router = createBrowserRouter([
   {
@@ -87,9 +89,19 @@ const router = createBrowserRouter([
       // }
     ],
   },
-  // {
-  //   path: '/admin',
-  // },
+  {
+    element: (
+      <ProtectedRoute requiredRoles={[UserRole.USER]}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: 'admin/content',
+        element: <AdminContentPage />,
+      },
+    ],
+  },
   {
     path: '*',
     element: <NotFoundPage />,
