@@ -1,13 +1,64 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useGetUserWatchListsQuery } from '../api/watchListApi.ts';
+import {
+  useCreateCustomWatchListMutation,
+  useDeleteCustomWatchListMutation,
+  useGetUserWatchListsQuery,
+} from '../api/watchListApi.ts';
 
 const getPosterUrl = (path: string) => `https://image.tmdb.org/t/p/w342${path}`;
+const defaultWatchListNames = new Set(['default', 'to watch', 'to-watch', 'watchlist', 'watch list']);
+
+const isDefaultWatchList = (list: { isDefault?: boolean; name: string }) =>
+  list.isDefault === true || defaultWatchListNames.has(list.name.trim().toLowerCase());
 
 export function WatchListsPage() {
   const { data: watchLists = [], isError, isFetching, isLoading, refetch } = useGetUserWatchListsQuery();
+  const [createCustomWatchList, createState] = useCreateCustomWatchListMutation();
+  const [deleteCustomWatchList, deleteState] = useDeleteCustomWatchListMutation();
+  const [newListName, setNewListName] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deletingListId, setDeletingListId] = useState<number | null>(null);
   const totalTitles = watchLists.reduce((count, list) => count + (list.titles?.length ?? 0), 0);
+  const trimmedListName = newListName.trim();
+
+  const handleCreateWatchList = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!trimmedListName) {
+      return;
+    }
+
+    setActionError(null);
+    try {
+      await createCustomWatchList(trimmedListName).unwrap();
+      setNewListName('');
+      await refetch();
+    } catch {
+      setActionError('Unable to create the watchlist. Please try a different name.');
+    }
+  };
+
+  const handleDeleteWatchList = async (watchListId: number, name: string) => {
+    const confirmed = window.confirm(`Delete "${name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError(null);
+    setDeletingListId(watchListId);
+    try {
+      await deleteCustomWatchList(watchListId).unwrap();
+      await refetch();
+    } catch {
+      setActionError('Unable to delete this watchlist. Default watchlists cannot be removed.');
+    } finally {
+      setDeletingListId(null);
+    }
+  };
 
   return (
     <main className="space-y-6">
@@ -21,6 +72,26 @@ export function WatchListsPage() {
           <Badge tone="accent">{totalTitles} titles</Badge>
         </div>
       </div>
+
+      <Card className="p-5" tone="raised">
+        <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleCreateWatchList}>
+          <label className="flex-1 space-y-2">
+            <span className="text-sm font-medium text-text">Create custom watchlist</span>
+            <input
+              className="w-full rounded-2xl border border-border bg-background/60 px-4 py-2.5 text-sm text-text outline-none focus:border-primary"
+              maxLength={80}
+              placeholder="Weekend movies"
+              type="text"
+              value={newListName}
+              onChange={event => setNewListName(event.target.value)}
+            />
+          </label>
+          <Button type="submit" disabled={!trimmedListName || createState.isLoading}>
+            {createState.isLoading ? 'Creating...' : 'Create'}
+          </Button>
+        </form>
+        {actionError ? <p className="mt-3 text-sm text-danger">{actionError}</p> : null}
+      </Card>
 
       {isError ? (
         <Card className="flex flex-wrap items-center justify-between gap-4 p-5" tone="glass">
@@ -48,6 +119,7 @@ export function WatchListsPage() {
       <div className="space-y-6">
         {watchLists.map(list => {
           const titles = list.titles ?? [];
+          const isDefaultList = isDefaultWatchList(list);
 
           return (
             <section key={list.id} className="space-y-4">
@@ -58,6 +130,17 @@ export function WatchListsPage() {
                     {titles.length} {titles.length === 1 ? 'title' : 'titles'}
                   </p>
                 </div>
+                {!isDefaultList ? (
+                  <Button
+                    className="border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
+                    disabled={deleteState.isLoading && deletingListId === list.id}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void handleDeleteWatchList(list.id, list.name)}
+                  >
+                    {deleteState.isLoading && deletingListId === list.id ? 'Deleting...' : 'Delete'}
+                  </Button>
+                ) : null}
               </div>
 
               {titles.length === 0 ? (
