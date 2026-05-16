@@ -13,6 +13,7 @@ import { SeriesPage } from '../pages/SeriesPage.tsx';
 import { EpisodePage } from '../pages/EpisodePage.tsx';
 import { ForgetPasswordPage } from '../../features/auth/pages/ForgetPasswordPage.tsx';
 import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.tsx';
+import { WatchListsPage } from '../pages/WatchListsPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -77,10 +78,14 @@ const router = createBrowserRouter([
         path: 'profile',
         element: <ProfilePage />,
       },
-      // {
-      //   path: 'wathlists',
-      //   element:
-      // },
+      {
+        path: 'watchlists',
+        element: <WatchListsPage />,
+      },
+      {
+        path: 'watchlist',
+        element: <WatchListsPage />,
+      },
       // {
       //   path: 'stats',
       //   element:
