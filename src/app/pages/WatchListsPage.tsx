@@ -5,6 +5,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import {
+  useClearDefaultWatchListMutation,
+  useClearWatchListByIdMutation,
   useCreateCustomWatchListMutation,
   useDeleteCustomWatchListMutation,
   useGetUserWatchListsQuery,
@@ -38,10 +40,13 @@ export function WatchListsPage() {
   const [renameCustomWatchList, renameState] = useRenameCustomWatchListMutation();
   const [removeTitleFromDefaultWatchList, removeDefaultTitleState] = useRemoveTitleFromDefaultWatchListMutation();
   const [removeTitleFromWatchListById, removeTitleState] = useRemoveTitleFromWatchListByIdMutation();
+  const [clearDefaultWatchList, clearDefaultState] = useClearDefaultWatchListMutation();
+  const [clearWatchListById, clearState] = useClearWatchListByIdMutation();
   const [newListName, setNewListName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<number | null>(null);
   const [renamingListId, setRenamingListId] = useState<number | null>(null);
+  const [clearingListId, setClearingListId] = useState<number | null>(null);
   const [removingTitleKey, setRemovingTitleKey] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const totalTitles = watchLists.reduce((count, list) => count + (list.titles?.length ?? 0), 0);
@@ -134,6 +139,29 @@ export function WatchListsPage() {
       setActionError('Unable to remove this title from the watchlist.');
     } finally {
       setRemovingTitleKey(null);
+    }
+  };
+
+  const handleClearWatchList = async (watchListId: number, name: string, isDefaultList: boolean) => {
+    const confirmed = window.confirm(`Remove all titles from "${name}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError(null);
+    setClearingListId(watchListId);
+    try {
+      if (isDefaultList) {
+        await clearDefaultWatchList().unwrap();
+      } else {
+        await clearWatchListById(watchListId).unwrap();
+      }
+
+      await refetch();
+    } catch {
+      setActionError('Unable to clear this watchlist.');
+    } finally {
+      setClearingListId(null);
     }
   };
 
@@ -255,6 +283,18 @@ export function WatchListsPage() {
                     <Button type="button" variant="secondary" onClick={() => startRename(list.id, list.name)}>
                       Rename
                     </Button>
+                    {titles.length > 0 ? (
+                      <Button
+                        disabled={
+                          clearingListId === list.id && (clearDefaultState.isLoading || clearState.isLoading)
+                        }
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void handleClearWatchList(list.id, list.name, isDefaultList)}
+                      >
+                        {clearingListId === list.id ? 'Clearing...' : 'Clear'}
+                      </Button>
+                    ) : null}
                     <Button
                       className="border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
                       disabled={deleteState.isLoading && deletingListId === list.id}
@@ -265,6 +305,15 @@ export function WatchListsPage() {
                       {deleteState.isLoading && deletingListId === list.id ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
+                ) : titles.length > 0 ? (
+                  <Button
+                    disabled={clearingListId === list.id && (clearDefaultState.isLoading || clearState.isLoading)}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void handleClearWatchList(list.id, list.name, isDefaultList)}
+                  >
+                    {clearingListId === list.id ? 'Clearing...' : 'Clear'}
+                  </Button>
                 ) : null}
               </div>
 
