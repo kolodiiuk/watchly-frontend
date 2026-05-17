@@ -35,6 +35,48 @@ const getWatchListNameWarning = (name: string) => {
 };
 
 type WatchListViewMode = 'cards' | 'list';
+type IconProps = {
+  className?: string;
+};
+
+function PencilIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        d="M16.9 4.6 19.4 7.1M4 20h4.2L19.1 9.1a1.8 1.8 0 0 0 0-2.5l-1.7-1.7a1.8 1.8 0 0 0-2.5 0L4 15.8V20Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2M7 7l1 13h8l1-13"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className = 'h-4 w-4', direction = 'up' }: IconProps & { direction?: 'up' | 'down' }) {
+  return (
+    <svg aria-hidden="true" className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        d={direction === 'up' ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
 
 interface WatchListSectionProps {
   list: WatchListInfo;
@@ -147,13 +189,23 @@ function WatchListSection({
             </div>
           ) : null}
 
-          <Button type="button" variant="ghost" onClick={() => setIsCollapsed(current => !current)}>
+          <Button
+            leadingIcon={<ChevronIcon direction={isCollapsed ? 'down' : 'up'} />}
+            type="button"
+            variant="ghost"
+            onClick={() => setIsCollapsed(current => !current)}
+          >
             {isCollapsed ? 'Expand' : 'Collapse'}
           </Button>
 
           {!isDefaultList && !isRenamingThisList ? (
             <>
-              <Button type="button" variant="secondary" onClick={() => onStartRename(list.id, list.name)}>
+              <Button
+                leadingIcon={<PencilIcon />}
+                type="button"
+                variant="secondary"
+                onClick={() => onStartRename(list.id, list.name)}
+              >
                 Rename
               </Button>
               {titles.length > 0 ? (
@@ -169,6 +221,7 @@ function WatchListSection({
               <Button
                 className="border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
                 disabled={deleteStateIsLoading && deletingListId === list.id}
+                leadingIcon={<TrashIcon />}
                 type="button"
                 variant="secondary"
                 onClick={() => onDelete(list.id, list.name)}
