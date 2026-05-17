@@ -8,6 +8,8 @@ import {
   useCreateCustomWatchListMutation,
   useDeleteCustomWatchListMutation,
   useGetUserWatchListsQuery,
+  useRemoveTitleFromDefaultWatchListMutation,
+  useRemoveTitleFromWatchListByIdMutation,
   useRenameCustomWatchListMutation,
 } from '../api/watchListApi.ts';
 
@@ -34,10 +36,13 @@ export function WatchListsPage() {
   const [createCustomWatchList, createState] = useCreateCustomWatchListMutation();
   const [deleteCustomWatchList, deleteState] = useDeleteCustomWatchListMutation();
   const [renameCustomWatchList, renameState] = useRenameCustomWatchListMutation();
+  const [removeTitleFromDefaultWatchList, removeDefaultTitleState] = useRemoveTitleFromDefaultWatchListMutation();
+  const [removeTitleFromWatchListById, removeTitleState] = useRemoveTitleFromWatchListByIdMutation();
   const [newListName, setNewListName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<number | null>(null);
   const [renamingListId, setRenamingListId] = useState<number | null>(null);
+  const [removingTitleKey, setRemovingTitleKey] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const totalTitles = watchLists.reduce((count, list) => count + (list.titles?.length ?? 0), 0);
   const trimmedListName = newListName.trim();
@@ -105,6 +110,30 @@ export function WatchListsPage() {
       await refetch();
     } catch {
       setActionError('Unable to rename this watchlist. Please try a different name.');
+    }
+  };
+
+  const handleRemoveTitle = async (watchListId: number, titleId: number, titleName: string, isDefaultList: boolean) => {
+    const confirmed = window.confirm(`Remove "${titleName}" from this watchlist?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const removingKey = `${watchListId}-${titleId}`;
+    setActionError(null);
+    setRemovingTitleKey(removingKey);
+    try {
+      if (isDefaultList) {
+        await removeTitleFromDefaultWatchList(titleId).unwrap();
+      } else {
+        await removeTitleFromWatchListById({ watchListId, titleId }).unwrap();
+      }
+
+      await refetch();
+    } catch {
+      setActionError('Unable to remove this title from the watchlist.');
+    } finally {
+      setRemovingTitleKey(null);
     }
   };
 
@@ -246,8 +275,8 @@ export function WatchListsPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {titles.map(title => (
-                    <Link key={title.id} to={`/title/${title.id}`} className="group">
-                      <Card className="flex h-full flex-col p-4 transition hover:border-primary/50" tone="base">
+                    <Card key={title.id} className="flex h-full flex-col p-4 transition hover:border-primary/50" tone="base">
+                      <Link to={`/title/${title.id}`} className="group">
                         <div className="aspect-2/3 w-full overflow-hidden rounded-2xl bg-background/50">
                           {title.posterUrl ? (
                             <img
@@ -261,16 +290,34 @@ export function WatchListsPage() {
                             </div>
                           )}
                         </div>
+                      </Link>
+                      <div className="mt-4 flex flex-1 flex-col gap-4">
+                        <Link to={`/title/${title.id}`} className="group">
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-base font-semibold text-text group-hover:text-primary">{title.name}</h3>
+                            {title.avgTmdbRating != null ? (
+                              <Badge className="shrink-0" tone="success">
+                                {title.avgTmdbRating.toFixed(1)}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </Link>
                         <div className="mt-4 flex flex-1 items-start justify-between gap-3">
-                          <h3 className="text-base font-semibold text-text group-hover:text-primary">{title.name}</h3>
-                          {title.avgTmdbRating != null ? (
-                            <Badge className="shrink-0" tone="success">
-                              {title.avgTmdbRating.toFixed(1)}
-                            </Badge>
-                          ) : null}
+                          <Button
+                            className="w-full justify-center border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
+                            disabled={
+                              removingTitleKey === `${list.id}-${title.id}` &&
+                              (removeDefaultTitleState.isLoading || removeTitleState.isLoading)
+                            }
+                            type="button"
+                            variant="secondary"
+                            onClick={() => void handleRemoveTitle(list.id, title.id, title.name, isDefaultList)}
+                          >
+                            {removingTitleKey === `${list.id}-${title.id}` ? 'Removing...' : 'Remove'}
+                          </Button>
                         </div>
-                      </Card>
-                    </Link>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               )}
