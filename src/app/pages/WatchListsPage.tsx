@@ -243,7 +243,15 @@ export function WatchListsPage() {
           const isRenamingThisList = renamingListId === list.id;
 
           return (
-            <section key={list.id} className="space-y-4">
+            <section
+              key={list.id}
+              className={[
+                'space-y-4 rounded-3xl border p-4 sm:p-5',
+                isDefaultList
+                  ? 'border-primary/40 bg-primary/10 shadow-[0_18px_60px_rgba(245,196,81,0.08)]'
+                  : 'border-transparent bg-transparent p-0 sm:p-0',
+              ].join(' ')}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 {isRenamingThisList ? (
                   <form
@@ -272,7 +280,9 @@ export function WatchListsPage() {
                   </form>
                 ) : (
                   <div>
-                    <h2 className="text-xl font-semibold text-text">{list.name}</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-xl font-semibold text-text">{list.name}</h2>
+                    </div>
                     <p className="text-sm text-muted">
                       {titles.length} {titles.length === 1 ? 'title' : 'titles'}
                     </p>
