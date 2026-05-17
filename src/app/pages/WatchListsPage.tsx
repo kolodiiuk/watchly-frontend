@@ -8,27 +8,46 @@ import {
   useCreateCustomWatchListMutation,
   useDeleteCustomWatchListMutation,
   useGetUserWatchListsQuery,
+  useRenameCustomWatchListMutation,
 } from '../api/watchListApi.ts';
 
 const getPosterUrl = (path: string) => `https://image.tmdb.org/t/p/w342${path}`;
-const defaultWatchListNames = new Set(['default', 'to watch', 'to-watch', 'watchlist', 'watch list']);
 
 const isDefaultWatchList = (list: { isDefault?: boolean; name: string }) =>
-  list.isDefault === true || defaultWatchListNames.has(list.name.trim().toLowerCase());
+  list.isDefault === true || list.name === 'Default';
+
+const getWatchListNameWarning = (name: string) => {
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return 'Watchlist name cannot be empty.';
+  }
+
+  if (trimmedName.toLowerCase() === 'default') {
+    return 'Default is reserved for the built-in watchlist.';
+  }
+
+  return null;
+};
 
 export function WatchListsPage() {
   const { data: watchLists = [], isError, isFetching, isLoading, refetch } = useGetUserWatchListsQuery();
   const [createCustomWatchList, createState] = useCreateCustomWatchListMutation();
   const [deleteCustomWatchList, deleteState] = useDeleteCustomWatchListMutation();
+  const [renameCustomWatchList, renameState] = useRenameCustomWatchListMutation();
   const [newListName, setNewListName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [deletingListId, setDeletingListId] = useState<number | null>(null);
+  const [renamingListId, setRenamingListId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const totalTitles = watchLists.reduce((count, list) => count + (list.titles?.length ?? 0), 0);
   const trimmedListName = newListName.trim();
+  const trimmedRenameValue = renameValue.trim();
 
   const handleCreateWatchList = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!trimmedListName) {
+    const warning = getWatchListNameWarning(newListName);
+    if (warning) {
+      setActionError(warning);
       return;
     }
 
@@ -60,6 +79,47 @@ export function WatchListsPage() {
     }
   };
 
+  const startRename = (watchListId: number, name: string) => {
+    setActionError(null);
+    setRenamingListId(watchListId);
+    setRenameValue(name);
+  };
+
+  const cancelRename = () => {
+    setRenamingListId(null);
+    setRenameValue('');
+  };
+
+  const handleRenameWatchList = async (event: FormEvent<HTMLFormElement>, watchListId: number) => {
+    event.preventDefault();
+    const warning = getWatchListNameWarning(renameValue);
+    if (warning) {
+      setActionError(warning);
+      return;
+    }
+
+    setActionError(null);
+    try {
+      await renameCustomWatchList({ watchListId, newName: trimmedRenameValue }).unwrap();
+      cancelRename();
+      await refetch();
+    } catch {
+      setActionError('Unable to rename this watchlist. Please try a different name.');
+    }
+  };
+
+  const sortedWatchLists = [...watchLists].sort((left, right) => {
+    if (isDefaultWatchList(left)) {
+      return -1;
+    }
+
+    if (isDefaultWatchList(right)) {
+      return 1;
+    }
+
+    return 0;
+  });
+
   return (
     <main className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -83,10 +143,13 @@ export function WatchListsPage() {
               placeholder="Weekend movies"
               type="text"
               value={newListName}
-              onChange={event => setNewListName(event.target.value)}
+              onChange={event => {
+                setNewListName(event.target.value);
+                setActionError(null);
+              }}
             />
           </label>
-          <Button type="submit" disabled={!trimmedListName || createState.isLoading}>
+          <Button type="submit" disabled={createState.isLoading}>
             {createState.isLoading ? 'Creating...' : 'Create'}
           </Button>
         </form>
@@ -117,29 +180,62 @@ export function WatchListsPage() {
       ) : null}
 
       <div className="space-y-6">
-        {watchLists.map(list => {
+        {sortedWatchLists.map(list => {
           const titles = list.titles ?? [];
           const isDefaultList = isDefaultWatchList(list);
+          const isRenamingThisList = renamingListId === list.id;
 
           return (
             <section key={list.id} className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-text">{list.name}</h2>
-                  <p className="text-sm text-muted">
-                    {titles.length} {titles.length === 1 ? 'title' : 'titles'}
-                  </p>
-                </div>
-                {!isDefaultList ? (
-                  <Button
-                    className="border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
-                    disabled={deleteState.isLoading && deletingListId === list.id}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => void handleDeleteWatchList(list.id, list.name)}
+                {isRenamingThisList ? (
+                  <form
+                    className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center"
+                    onSubmit={event => void handleRenameWatchList(event, list.id)}
                   >
-                    {deleteState.isLoading && deletingListId === list.id ? 'Deleting...' : 'Delete'}
-                  </Button>
+                    <input
+                      autoFocus
+                      className="min-w-60 flex-1 rounded-2xl border border-border bg-background/60 px-4 py-2.5 text-sm text-text outline-none focus:border-primary"
+                      maxLength={80}
+                      type="text"
+                      value={renameValue}
+                      onChange={event => {
+                        setRenameValue(event.target.value);
+                        setActionError(null);
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button type="submit" disabled={renameState.isLoading}>
+                        {renameState.isLoading ? 'Saving...' : 'Save'}
+                      </Button>
+                      <Button type="button" variant="ghost" onClick={cancelRename}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <div>
+                    <h2 className="text-xl font-semibold text-text">{list.name}</h2>
+                    <p className="text-sm text-muted">
+                      {titles.length} {titles.length === 1 ? 'title' : 'titles'}
+                    </p>
+                  </div>
+                )}
+                {!isDefaultList ? (
+                  <div className={isRenamingThisList ? 'hidden' : 'flex items-center gap-2'}>
+                    <Button type="button" variant="secondary" onClick={() => startRename(list.id, list.name)}>
+                      Rename
+                    </Button>
+                    <Button
+                      className="border-danger/40 text-danger hover:bg-danger/10 hover:text-danger"
+                      disabled={deleteState.isLoading && deletingListId === list.id}
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void handleDeleteWatchList(list.id, list.name)}
+                    >
+                      {deleteState.isLoading && deletingListId === list.id ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
 
