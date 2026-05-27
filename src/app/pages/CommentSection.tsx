@@ -595,19 +595,14 @@ export default function CommentSection(props: CommentSectionProps)
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-accent">AI comment search</p>
               <h3 className="mt-2 text-xl font-semibold text-text">Find the most relevant reactions</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                Ask the assistant to surface comments that match a topic, mood, spoiler concern, or specific
-                question.
-              </p>
             </div>
-            <Badge tone="accent">Preview tool</Badge>
           </div>
         </div>
 
         <div className="rounded-b-[inherit] space-y-4 bg-background/20 p-5">
           <div className="rounded-2xl border border-primary/20 bg-background/35 px-4 py-3 text-sm leading-6 text-muted">
             Search the current discussion with the assistant, then review only the returned comments with
-            highlights applied to each comment's real saved text.
+            highlights applied.
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -653,8 +648,6 @@ export default function CommentSection(props: CommentSectionProps)
               </>
             ) : (
               <p className="text-sm text-muted">
-                Search results only show comments returned by the assistant, and highlights are rendered on the
-                original comment text.
               </p>
             )}
 
@@ -681,10 +674,6 @@ export default function CommentSection(props: CommentSectionProps)
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">Your comments</div>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      Your comments stay pinned to the top of the discussion. Pick one to revise, or start a new
-                      note.
-                    </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -753,7 +742,7 @@ export default function CommentSection(props: CommentSectionProps)
             </div>
 
             <label className="block space-y-2">
-              <span className="text-sm text-muted">Comment</span>
+              <span className="text-sm text-muted"></span>
               <textarea
                 value={commentDraft}
                 onChange={event => setCommentDraft(event.target.value)}
