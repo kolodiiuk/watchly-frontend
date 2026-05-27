@@ -35,9 +35,34 @@ type HighlightRange = {
   end: number;
 };
 
+function decodeAssistantText(text: string)
+{
+  return text
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/\\(["\\/bfnrt])/g, (_, token: string) =>
+    {
+      switch (token)
+      {
+        case 'b':
+          return '\b';
+        case 'f':
+          return '\f';
+        case 'n':
+          return '\n';
+        case 'r':
+          return '\r';
+        case 't':
+          return '\t';
+        default:
+          return token;
+      }
+    });
+}
+
 function getHighlightRanges(originalText: string, highlightedText: string): HighlightRange[]
 {
-  const parts = highlightedText.split(/(<\/?mark>)/gi).filter(Boolean);
+  const decodedHighlightedText = decodeAssistantText(highlightedText);
+  const parts = decodedHighlightedText.split(/(<\/?mark>)/gi).filter(Boolean);
   const ranges: HighlightRange[] = [];
   let originalIndex = 0;
   let isMarked = false;
@@ -57,7 +82,8 @@ function getHighlightRanges(originalText: string, highlightedText: string): High
       continue;
     }
 
-    if (originalText.slice(originalIndex, originalIndex + part.length) !== part)
+    const matchIndex = originalText.indexOf(part, originalIndex);
+    if (matchIndex === -1)
     {
       return [];
     }
@@ -65,22 +91,22 @@ function getHighlightRanges(originalText: string, highlightedText: string): High
     if (isMarked && part.length > 0)
     {
       const previousRange = ranges[ranges.length - 1];
-      if (previousRange && previousRange.end === originalIndex)
+      if (previousRange && previousRange.end === matchIndex)
       {
-        previousRange.end = originalIndex + part.length;
+        previousRange.end = matchIndex + part.length;
       } else
       {
         ranges.push({
-          start: originalIndex,
-          end: originalIndex + part.length,
+          start: matchIndex,
+          end: matchIndex + part.length,
         });
       }
     }
 
-    originalIndex += part.length;
+    originalIndex = matchIndex + part.length;
   }
 
-  return originalIndex === originalText.length ? ranges : [];
+  return ranges;
 }
 
 function renderCommentText(originalText: string, highlightRanges: HighlightRange[])
