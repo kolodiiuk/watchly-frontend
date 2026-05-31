@@ -32,7 +32,7 @@ export function MainLayout() {
             <NavLink to="/browse" className={navLinkClass}>
               Browse
             </NavLink>
-            <NavLink to="/watchlist" className={navLinkClass}>
+            <NavLink to="/watchlists" className={navLinkClass}>
               Watchlist
             </NavLink>
           </nav>
