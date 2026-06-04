@@ -16,6 +16,7 @@ import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.t
 import { AdminContentPage } from '../pages/admin/AdminContentPage.tsx';
 import { UserRole } from '../models/UserRole.ts';
 import { StatsPage } from '../../features/profile/pages/StatsPage.tsx';
+import { WatchListsPage } from '../pages/WatchListsPage.tsx';
 
 const router = createBrowserRouter([
   {
@@ -84,10 +85,14 @@ const router = createBrowserRouter([
         path: 'stats',
         element: <StatsPage />,
       },
-      // {
-      //   path: 'wathlists',
-      //   element:
-      // },
+      {
+        path: 'watchlists',
+        element: <WatchListsPage />,
+      },
+      {
+        path: 'watchlist',
+        element: <WatchListsPage />,
+      }
     ],
   },
   {

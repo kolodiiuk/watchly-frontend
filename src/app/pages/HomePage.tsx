@@ -54,7 +54,7 @@ export function HomePage() {
                 <ButtonLink to="/browse" leadingIcon={<span aria-hidden="true">▶</span>}>
                   Continue browsing
                 </ButtonLink>
-                <ButtonLink to="/watchlist" variant="secondary">
+                <ButtonLink to="/watchlists" variant="secondary">
                   Open watchlist
                 </ButtonLink>
                 <ButtonLink to="/auth/sign-up" variant="ghost">
