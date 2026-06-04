@@ -6,11 +6,20 @@ import {Button} from '../../components/ui/Button.tsx';
 import {Card} from '../../components/ui/Card.tsx';
 import {useGetTitleQuery} from '../api/catalogApi.ts';
 import {useVoteTitleMutation} from '../api/voteApi.ts';
+import {
+  useDecrementSeasonWatchCountMutation,
+  useGetTitleWatchStatusQuery,
+  useGetTvShowWatchInfoQuery,
+  useIncrementSeasonWatchCountMutation,
+  useSetTitleWatchStatusMutation
+} from '../api/watchTrackingApi.ts';
+import {WatchStatus} from '../models/WatchStatus.ts';
 import {TitleType} from '../models/TitleType.tsx';
 import {formatGenericRating, formatRating, formatReleaseDate, formatRuntime, formatTextOrUnavailable, formatVoteCount, getFullImageUrl, splitDisplayValues} from '../../utils/formatters.ts';
 import CommentSection from './CommentSection';
 import {WatchProgressButton} from '../components/watch-progress/WatchProgressButton.tsx';
 import {SeriesSeasonsAccordion} from '../components/watch-progress/SeriesSeasonsAccordion.tsx';
+import {TitleWatchStatusSelector} from '../components/watch-progress/TitleWatchStatusSelector.tsx';
 
 export function SeriesPage()
 {
@@ -24,9 +33,23 @@ export function SeriesPage()
   const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
   const [voteMessage, setVoteMessage] = useState<string | null>(null);
+  const [watchStatusMutationError, setWatchStatusMutationError] = useState<string | null>(null);
 
   const {data: titleInfo, isLoading, isError} = useGetTitleQuery(contentId, {skip: !hasValidContentId});
   const [voteTitle, {isLoading: isSubmittingVote}] = useVoteTitleMutation();
+  const tvShowWatchInfoQuery = useGetTvShowWatchInfoQuery(contentId, {skip: !isAuthenticated || !hasValidContentId});
+  const {
+    data: seriesWatchStatus
+  } = useGetTitleWatchStatusQuery(contentId, {skip: !isAuthenticated || !hasValidContentId});
+  const [setTitleWatchStatus] = useSetTitleWatchStatusMutation();
+  const [
+    incrementSeasonWatchCount,
+    {isLoading: isIncrementingSeasonWatchCount, isError: isIncrementSeasonWatchCountError}
+  ] = useIncrementSeasonWatchCountMutation();
+  const [
+    decrementSeasonWatchCount,
+    {isLoading: isDecrementingSeasonWatchCount, isError: isDecrementSeasonWatchCountError}
+  ] = useDecrementSeasonWatchCountMutation();
 
   useEffect(() =>
   {
@@ -79,8 +102,42 @@ export function SeriesPage()
     }
   };
 
-  const handleSeriesWatched = (_watchCount: number, _userId: string) =>
+  const handleSeriesWatched = async () =>
   {
+    if (!titleInfo?.seasons.length)
+    {
+      return;
+    }
+
+    try
+    {
+      await Promise.all(titleInfo.seasons.map(season => incrementSeasonWatchCount(season.seasonId).unwrap()));
+    } catch
+    {
+      // Mutation state drives the visible error message.
+    }
+  };
+
+  const handleSeriesUnwatched = async () =>
+  {
+    if (!titleInfo?.seasons.length)
+    {
+      return;
+    }
+
+    try
+    {
+      setWatchStatusMutationError(null);
+      await Promise.all(titleInfo.seasons.map(season => decrementSeasonWatchCount(season.seasonId).unwrap()));
+      if (seriesWatchStatus === WatchStatus.NotWatched)
+      {
+        return;
+      }
+      await setTitleWatchStatus({titleId: contentId, status: WatchStatus.NotWatched}).unwrap();
+    } catch
+    {
+      setWatchStatusMutationError('Could not update watch status.');
+    }
   };
 
   const castMembers = splitDisplayValues(titleInfo?.actors);
@@ -88,6 +145,7 @@ export function SeriesPage()
   const genres = titleInfo?.genres ?? [];
   const spokenLanguages = titleInfo?.spokenLanguages ?? [];
   const productionCompanies = titleInfo?.productionCompanies ?? [];
+  const seriesWatchCount = tvShowWatchInfoQuery.data?.episodeWatchInfos.reduce((total, info) => total + info.count, 0) ?? 0;
 
   if (!hasValidContentId)
   {
@@ -141,7 +199,25 @@ export function SeriesPage()
                 </div>
                 {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
                 {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
-                {isAuthenticated && userId ? <div className="mt-3"><WatchProgressButton userId={userId} itemLabel="series" onMarkWatched={handleSeriesWatched}/></div> : null}
+                {isAuthenticated && userId ? (
+                  <div className="mt-3">
+                    <TitleWatchStatusSelector
+                      titleId={contentId}
+                      isAuthenticated={isAuthenticated}
+                      hasValidTitleId={hasValidContentId}
+                    />
+                    <WatchProgressButton
+                      watchCount={seriesWatchCount}
+                      itemLabel="series"
+                      onMarkWatched={handleSeriesWatched}
+                      onUnwatch={handleSeriesUnwatched}
+                      isLoading={tvShowWatchInfoQuery.isFetching || isIncrementingSeasonWatchCount || isDecrementingSeasonWatchCount}
+                      isError={tvShowWatchInfoQuery.isError || isIncrementSeasonWatchCountError || isDecrementSeasonWatchCountError}
+                      disabled={!titleInfo.seasons.length}
+                    />
+                    {watchStatusMutationError ? <p className="mt-2 text-sm text-danger">{watchStatusMutationError}</p> : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

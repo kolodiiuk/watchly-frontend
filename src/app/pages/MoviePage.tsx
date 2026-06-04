@@ -1,12 +1,16 @@
-import {type ChangeEvent, useState} from 'react';
 import {useParams} from 'react-router-dom';
 import {useAuth} from '../../features/auth/services/AuthProvider.tsx';
 import {Badge} from '../../components/ui/Badge.tsx';
 import {Card} from '../../components/ui/Card.tsx';
 import {useGetTitleQuery} from '../api/catalogApi.ts';
+import {
+  useDecrementMovieWatchCountMutation,
+  useGetMovieWatchCountQuery,
+  useIncrementMovieWatchCountMutation
+} from '../api/watchTrackingApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
-import {WatchStatus} from '../models/WatchStatus.ts';
 import {WatchProgressButton} from '../components/watch-progress/WatchProgressButton.tsx';
+import {TitleWatchStatusSelector} from '../components/watch-progress/TitleWatchStatusSelector.tsx';
 import {
   formatGenericRating,
   formatRating,
@@ -20,13 +24,6 @@ import {
 } from '../../utils/formatters.ts';
 import CommentSection from './CommentSection';
 
-const watchStatusOptions = [
-  {value: WatchStatus.PlanToWatch, label: 'Plan to watch'},
-  {value: WatchStatus.Watching, label: 'Watching'},
-  {value: WatchStatus.Completed, label: 'Completed'},
-  {value: WatchStatus.Dropped, label: 'Dropped'},
-];
-
 export function MoviePage()
 {
   const {titleId: titleIdParam} = useParams<{ titleId?: string }>();
@@ -34,23 +31,41 @@ export function MoviePage()
   const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
   const {isAuthenticated, user} = useAuth();
   const userId = user?.id;
-  const [selectedWatchStatus, setSelectedWatchStatus] = useState<WatchStatus>(WatchStatus.PlanToWatch);
 
   const {data: titleInfo, isLoading, isError} = useGetTitleQuery(contentId, {skip: !hasValidContentId});
-
-  const handleWatchStatusChange = (_titleId: number, _status: WatchStatus) =>
+  const {
+    data: movieWatchCount = 0,
+    isFetching: isMovieWatchCountFetching,
+    isError: isMovieWatchCountError
+  } = useGetMovieWatchCountQuery(contentId, {skip: !isAuthenticated || !hasValidContentId});
+  const [
+    incrementMovieWatchCount,
+    {isLoading: isIncrementingMovieWatchCount, isError: isIncrementMovieWatchCountError}
+  ] = useIncrementMovieWatchCountMutation();
+  const [
+    decrementMovieWatchCount,
+    {isLoading: isDecrementingMovieWatchCount, isError: isDecrementMovieWatchCountError}
+  ] = useDecrementMovieWatchCountMutation();
+  const handleMovieWatched = async () =>
   {
+    try
+    {
+      await incrementMovieWatchCount(contentId).unwrap();
+    } catch
+    {
+      // Mutation state drives the visible error message.
+    }
   };
 
-  const handleMovieWatched = (_watchCount: number, _userId: string) =>
+  const handleMovieUnwatched = async () =>
   {
-  };
-
-  const onWatchStatusSelect = (event: ChangeEvent<HTMLSelectElement>) =>
-  {
-    const nextStatus = Number(event.target.value) as WatchStatus;
-    setSelectedWatchStatus(nextStatus);
-    handleWatchStatusChange(contentId, nextStatus);
+    try
+    {
+      await decrementMovieWatchCount(contentId).unwrap();
+    } catch
+    {
+      // Mutation state drives the visible error message.
+    }
   };
 
   const castMembers = splitDisplayValues(titleInfo?.actors);
@@ -116,13 +131,20 @@ export function MoviePage()
                 <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
                   <p className="text-sm uppercase tracking-[0.24em] text-accent">Watching progress</p>
                   <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                    <label className="block">
-                      <span className="text-xs uppercase tracking-[0.2em] text-muted">Status</span>
-                      <select value={selectedWatchStatus} onChange={onWatchStatusSelect} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text">
-                        {watchStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                    </label>
-                    <WatchProgressButton userId={userId} itemLabel="movie" onMarkWatched={handleMovieWatched} className="lg:min-w-[220px]"/>
+                    <TitleWatchStatusSelector
+                      titleId={contentId}
+                      isAuthenticated={isAuthenticated}
+                      hasValidTitleId={hasValidContentId}
+                    />
+                    <WatchProgressButton
+                      watchCount={movieWatchCount}
+                      itemLabel="movie"
+                      onMarkWatched={handleMovieWatched}
+                      onUnwatch={handleMovieUnwatched}
+                      isLoading={isMovieWatchCountFetching || isIncrementingMovieWatchCount || isDecrementingMovieWatchCount}
+                      isError={isMovieWatchCountError || isIncrementMovieWatchCountError || isDecrementMovieWatchCountError}
+                      className="lg:min-w-[220px]"
+                    />
                   </div>
                 </div>
               ) : null}

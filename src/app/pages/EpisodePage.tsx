@@ -6,6 +6,11 @@ import {Button} from '../../components/ui/Button.tsx';
 import {Card} from '../../components/ui/Card.tsx';
 import {useGetEpisodeQuery} from '../api/catalogApi.ts';
 import {useVoteEpisodeMutation} from '../api/voteApi.ts';
+import {
+  useDecrementEpisodeWatchCountMutation,
+  useGetEpisodeWatchCountQuery,
+  useIncrementEpisodeWatchCountMutation
+} from '../api/watchTrackingApi.ts';
 import {TitleType} from '../models/TitleType.tsx';
 import {formatGenericRating, formatVoteCount, getFullImageUrl} from '../../utils/formatters.ts';
 import CommentSection from './CommentSection';
@@ -29,6 +34,19 @@ export function EpisodePage()
   const [voteMessage, setVoteMessage] = useState<string | null>(null);
   const {data: episodeInfo, isLoading, isError} = useGetEpisodeQuery(contentId, {skip: !hasValidContentId});
   const [voteEpisode, {isLoading: isSubmittingVote}] = useVoteEpisodeMutation();
+  const {
+    data: episodeWatchCount = 0,
+    isFetching: isEpisodeWatchCountFetching,
+    isError: isEpisodeWatchCountError
+  } = useGetEpisodeWatchCountQuery(contentId, {skip: !isAuthenticated || !hasValidContentId});
+  const [
+    incrementEpisodeWatchCount,
+    {isLoading: isIncrementingEpisodeWatchCount, isError: isIncrementEpisodeWatchCountError}
+  ] = useIncrementEpisodeWatchCountMutation();
+  const [
+    decrementEpisodeWatchCount,
+    {isLoading: isDecrementingEpisodeWatchCount, isError: isDecrementEpisodeWatchCountError}
+  ] = useDecrementEpisodeWatchCountMutation();
 
   useEffect(() =>
   {
@@ -69,8 +87,26 @@ export function EpisodePage()
     }
   };
 
-  const handleEpisodeWatched = (_watchCount: number, _userId: string) =>
+  const handleEpisodeWatched = async () =>
   {
+    try
+    {
+      await incrementEpisodeWatchCount(contentId).unwrap();
+    } catch
+    {
+      // Mutation state drives the visible error message.
+    }
+  };
+
+  const handleEpisodeUnwatched = async () =>
+  {
+    try
+    {
+      await decrementEpisodeWatchCount(contentId).unwrap();
+    } catch
+    {
+      // Mutation state drives the visible error message.
+    }
   };
 
   if (!hasValidContentId)
@@ -114,7 +150,18 @@ export function EpisodePage()
                 </div>
                 {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
                 {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
-                {isAuthenticated && userId ? <div className="mt-3"><WatchProgressButton userId={userId} itemLabel="episode" onMarkWatched={handleEpisodeWatched}/></div> : null}
+                {isAuthenticated && userId ? (
+                  <div className="mt-3">
+                    <WatchProgressButton
+                      watchCount={episodeWatchCount}
+                      itemLabel="episode"
+                      onMarkWatched={handleEpisodeWatched}
+                      onUnwatch={handleEpisodeUnwatched}
+                      isLoading={isEpisodeWatchCountFetching || isIncrementingEpisodeWatchCount || isDecrementingEpisodeWatchCount}
+                      isError={isEpisodeWatchCountError || isIncrementEpisodeWatchCountError || isDecrementEpisodeWatchCountError}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
