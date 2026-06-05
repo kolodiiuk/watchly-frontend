@@ -1,4 +1,4 @@
-import {TitleType} from "../app/models/TitleType.tsx";
+import {TitleType} from "../features/titles-details/models/TitleType.ts";
 
 export const formatReleaseDate = (value?: string | null) => {
   if (!value) return 'Release date not available';
@@ -103,3 +103,5 @@ export const getContentType = (isEpisodeRoute: boolean, titleType: TitleType) : 
 
   return titleType == TitleType.Series ? "Series" : "Movie"
 }
+
+export const numberFormatter = new Intl.NumberFormat();

@@ -1,22 +1,25 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { UserLayout, AuthLayout, MainLayout, AdminLayout } from '../../components/layouts';
-import ProtectedRoute from '../../components/ProtectedRoute';
-import { BrowsePage } from '../pages/BrowsePage';
-import { HomePage } from '../pages/HomePage';
-import { NotFoundPage } from '../../shared/NotFoundPage.tsx';
+import ProtectedRoute from './ProtectedRoute';
+import { BrowsePage } from '../../features/catalog/BrowsePage';
+//import { HomePage } from '../pages/HomePage';
+import { NotFoundPage } from '../../pages/NotFoundPage.tsx';
 import { ProfilePage } from '../../features/profile/pages/ProfilePage';
 import { SignInPage } from '../../features/auth/pages/SignInPage.tsx';
 import { SignUpPage } from '../../features/auth/pages/SignUpPage.tsx';
-import { TitlePage } from '../pages/TitlePage.tsx';
-import { MoviePage } from '../pages/MoviePage.tsx';
-import { SeriesPage } from '../pages/SeriesPage.tsx';
-import { EpisodePage } from '../pages/EpisodePage.tsx';
+import { TitlePage } from '../../features/titles-details/pages/TitlePage.tsx';
+import { MoviePage } from '../../features/titles-details/pages/MoviePage.tsx';
+import { SeriesPage } from '../../features/titles-details/pages/SeriesPage.tsx';
+import { EpisodePage } from '../../features/titles-details/pages/EpisodePage.tsx';
 import { ForgetPasswordPage } from '../../features/auth/pages/ForgetPasswordPage.tsx';
 import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.tsx';
-import { AdminContentPage } from '../pages/admin/AdminContentPage.tsx';
-import { UserRole } from '../models/UserRole.ts';
-import { StatsPage } from '../../features/profile/pages/StatsPage.tsx';
-import { WatchListsPage } from '../pages/WatchListsPage.tsx';
+import { AdminContentPage } from '../../features/admin/pages/AdminContentPage.tsx';
+import { UserRole } from '../../features/auth/models/UserRole.ts';
+import { StatsPage } from '../../features/user-stats/pages/StatsPage.tsx';
+import { WatchListsPage } from '../../features/watch-list/pages/WatchListsPage.tsx';
+import {UserLayout} from "../../layouts/UserLayout.tsx";
+import {MainLayout} from "../../layouts/MainLayout.tsx";
+import {AuthLayout} from "../../layouts/AuthLayout.tsx";
+import {AdminLayout} from "../../layouts/AdminLayout.tsx";
 
 const router = createBrowserRouter([
   {
@@ -24,7 +27,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: <BrowsePage />,
       },
       {
         path: 'browse',
@@ -97,7 +100,7 @@ const router = createBrowserRouter([
   },
   {
     element: (
-      <ProtectedRoute requiredRoles={[UserRole.USER]}>
+      <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
         <AdminLayout />
       </ProtectedRoute>
     ),

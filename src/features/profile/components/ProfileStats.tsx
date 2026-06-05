@@ -1,40 +1,8 @@
-import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
-import { Clapperboard, Clock, Film, Library, Tags, Tv } from 'lucide-react';
-import { useGetMovieStatsQuery, useGetSeriesStatsQuery } from '../../../app/api/userStatsApi.ts';
-import { Badge } from '../../../components/ui/Badge.tsx';
-import { Card } from '../../../components/ui/Card.tsx';
-
-type StatItem = {
-  label: string;
-  value: number;
-};
-
-type StatsCardProps = {
-  title: string;
-  subtitle: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: StatItem[];
-  topGenres: string[];
-  isLoading: boolean;
-  isError: boolean;
-  errorMessage: string;
-};
-
-const numberFormatter = new Intl.NumberFormat();
-
-function formatStatValue(value: number) {
-  return numberFormatter.format(value);
-}
-
-function StatsSkeleton() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="h-24 animate-pulse rounded-2xl border border-border/70 bg-background/45" />
-      ))}
-    </div>
-  );
-}
+import type {FetchBaseQueryError} from '@reduxjs/toolkit/query';
+import {Clapperboard, Clock, Film, Library, Tv} from 'lucide-react';
+import {useGetMovieStatsQuery, useGetSeriesStatsQuery} from '../../user-stats/api/userStatsApi.ts';
+import {Card} from '../../../components/common/Card.tsx';
+import {formatStatValue, StatsCard} from "./StatsCard";
 
 const isFetchBaseQueryError = (error: unknown): error is FetchBaseQueryError => {
   return typeof error === 'object' && error !== null && 'status' in error;
@@ -47,54 +15,41 @@ const getStatsErrorMessage = (error: unknown) =>
     ? 'Session expired. Sign in again to load your statistics.'
     : 'Could not load these stats right now.';
 
-function StatsCard({ title, subtitle, icon: Icon, items, topGenres, isLoading, isError, errorMessage }: StatsCardProps) {
+type SummaryStatCardProps = {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  variant?: 'count' | 'time';
+};
+
+function SummaryStatCard({label, value, icon: Icon, variant = 'count'}: SummaryStatCardProps) {
+  const isTime = variant === 'time';
+
   return (
-    <Card className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-text">
-            <Icon className="h-5 w-5 text-primary" />
-            {title}
-          </h2>
-          <p className="mt-1 text-sm text-muted">{subtitle}</p>
-        </div>
-        <Badge tone={isError ? 'danger' : 'accent'}>{isError ? 'Unavailable' : 'Stats'}</Badge>
+    <Card
+      className={
+        isTime
+          ? 'flex items-center gap-4 rounded-[1.75rem] border-border/70 bg-background/70'
+          : 'flex items-center gap-4 rounded-[1.75rem] border-primary/20 bg-linear-to-br from-primary/12 via-primary/5 to-background/95 shadow-[0_20px_44px_-28px_var(--color-primary)]'
+      }
+    >
+      <div
+        className={
+          isTime
+            ? 'flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-muted'
+            : 'flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary'
+        }
+      >
+        <Icon className="h-5 w-5" />
       </div>
-
-      {isLoading ? (
-        <StatsSkeleton />
-      ) : isError ? (
-        <div className="rounded-2xl border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {errorMessage}
+      <div>
+        <div className={isTime ? 'text-[0.72rem] font-medium uppercase tracking-[0.22em] text-muted' : 'text-[0.74rem] font-semibold uppercase tracking-[0.24em] text-primary/80'}>
+          {label}
         </div>
-      ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {items.map(item => (
-              <div key={item.label} className="rounded-2xl border border-border/70 bg-background/45 p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted">{item.label}</div>
-                <div className="mt-2 text-2xl font-semibold text-text">{formatStatValue(item.value)}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="mr-1 flex items-center gap-2 text-sm font-medium text-muted">
-              <Tags className="h-4 w-4" />
-              Top genres
-            </div>
-            {topGenres.length > 0 ? (
-              topGenres.map(genre => (
-                <Badge key={genre} tone="default" className="tracking-normal normal-case">
-                  {genre}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-sm text-muted">No genre data yet.</span>
-            )}
-          </div>
-        </>
-      )}
+        <div className={isTime ? 'mt-2 text-2xl font-medium text-text/92' : 'mt-2 text-3xl font-semibold leading-none text-text'}>
+          {value}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -133,8 +88,10 @@ export function ProfileStats() {
         isError={movieStatsQuery.isError}
         errorMessage={getStatsErrorMessage(movieStatsQuery.error)}
         topGenres={movieStats?.topGenres ?? []}
-        items={[
+        countItems={[
           { label: 'Movies', value: movieStats?.movieCount ?? 0 },
+        ]}
+        timeItems={[
           { label: 'Hours', value: movieStats?.hoursWatched ?? 0 },
           { label: 'Days', value: movieStats?.daysWatched ?? 0 },
           { label: 'Months', value: movieStats?.monthsWatched ?? 0 },
@@ -149,9 +106,11 @@ export function ProfileStats() {
         isError={seriesStatsQuery.isError}
         errorMessage={getStatsErrorMessage(seriesStatsQuery.error)}
         topGenres={seriesStats?.topGenres ?? []}
-        items={[
+        countItems={[
           { label: 'Series', value: seriesStats?.tvSeriesCount ?? 0 },
           { label: 'Episodes', value: seriesStats?.episodesCount ?? 0 },
+        ]}
+        timeItems={[
           { label: 'Hours', value: seriesStats?.hoursWatched ?? 0 },
           { label: 'Days', value: seriesStats?.daysWatched ?? 0 },
           { label: 'Months', value: seriesStats?.monthsWatched ?? 0 },
@@ -159,31 +118,22 @@ export function ProfileStats() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="flex items-center gap-4">
-          <Clapperboard className="h-6 w-6 text-accent" />
-          <div>
-            <div className="text-sm text-muted">Total titles</div>
-            <div className="text-xl font-semibold text-text">
-              {totalTitles !== null ? formatStatValue(totalTitles) : 'N/A'}
-            </div>
-          </div>
-        </Card>
-        <Card className="flex items-center gap-4">
-          <Clock className="h-6 w-6 text-accent" />
-          <div>
-            <div className="text-sm text-muted">Total hours</div>
-            <div className="text-xl font-semibold text-text">
-              {totalHours !== null ? formatStatValue(totalHours) : 'N/A'}
-            </div>
-          </div>
-        </Card>
-        <Card className="flex items-center gap-4">
-          <Library className="h-6 w-6 text-accent" />
-          <div>
-            <div className="text-sm text-muted">Episodes watched</div>
-            <div className="text-xl font-semibold text-text">{formatStatValue(seriesStats?.episodesCount ?? 0)}</div>
-          </div>
-        </Card>
+        <SummaryStatCard
+          label="Total titles"
+          value={totalTitles !== null ? formatStatValue(totalTitles) : 'N/A'}
+          icon={Clapperboard}
+        />
+        <SummaryStatCard
+          label="Total hours"
+          value={totalHours !== null ? formatStatValue(totalHours) : 'N/A'}
+          icon={Clock}
+          variant="time"
+        />
+        <SummaryStatCard
+          label="Episodes watched"
+          value={formatStatValue(seriesStats?.episodesCount ?? 0)}
+          icon={Library}
+        />
       </div>
     </section>
   );

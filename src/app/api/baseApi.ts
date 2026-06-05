@@ -89,6 +89,6 @@ const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQuery
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['WatchTracking', 'UserStats'],
+  tagTypes: ['AdminContent', 'WatchTracking', 'UserStats'],
   endpoints: () => ({}),
 });

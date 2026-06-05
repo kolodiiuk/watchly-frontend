@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/common/Card';
+import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../auth/services/AuthProvider.tsx';
 import {
   useChangePasswordMutation,
   useChangeUsernameMutation,
   useUpdateProfilePictureMutation,
-} from '../../../app/api/usersApi.ts';
+} from '../api/usersApi.ts';
 import { useDispatch } from 'react-redux';
 import { setNewUserName } from '../../auth/services/authSlice.ts';
 

@@ -1,4 +1,4 @@
-import type { User } from '../../../app/models/User.ts';
+import type { User } from '../models/User.ts';
 
 export type AuthSessionResponse = {
   user?: User | null;
