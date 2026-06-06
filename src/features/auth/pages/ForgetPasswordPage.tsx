@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '../../../components/ui/Card.tsx';
-import { Button } from '../../../components/ui/Button.tsx';
-import { useForgetPasswordMutation } from '../../../app/api/usersApi.ts';
+import { Card } from '../../../components/common/Card.tsx';
+import { Button } from '../../../components/common/Button.tsx';
+import { useForgetPasswordMutation } from '../../profile/api/usersApi.ts';
 
 export function ForgetPasswordPage() {
   const [email, setEmail] = useState<string>('');

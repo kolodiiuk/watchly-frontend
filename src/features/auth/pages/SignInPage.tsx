@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card } from '../../../components/ui/Card.tsx';
-import { type SignInRequest, useSignInMutation } from '../../../app/api/authApi.ts';
-import { Button } from '../../../components/ui/Button.tsx';
+import { Card } from '../../../components/common/Card.tsx';
+import { type SignInRequest, useSignInMutation } from '../api/authApi.ts';
+import { Button } from '../../../components/common/Button.tsx';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../app/store.ts';
 import { setCredentials } from '../services/authSlice.ts';

@@ -3,7 +3,7 @@ import { authStorage } from './authStorage.ts';
 import { API_BASE_URL } from '../../../app/api/baseApi.ts';
 import type { AuthSessionResponse } from './authSession.ts';
 import { resolveRole } from './authSession.ts';
-import type { User } from '../../../app/models/User.ts';
+import type { User } from '../models/User.ts';
 
 type StoredUser = User & { role?: string | null };
 

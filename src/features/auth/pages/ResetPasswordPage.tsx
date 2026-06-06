@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Card } from '../../../components/ui/Card.tsx';
-import { useResetPasswordMutation } from '../../../app/api/usersApi.ts';
+import { Card } from '../../../components/common/Card.tsx';
+import { useResetPasswordMutation } from '../../profile/api/usersApi.ts';
 
 type ResetStatus = 'loading' | 'success' | 'error';
 
