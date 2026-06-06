@@ -45,6 +45,9 @@ export interface CreateTitleRequest {
   localizationLanguages?: string | null;
   homePage?: string | null;
   avgTmdbRating?: number | null;
+  genreIds: number[];
+  spokenLanguageIds: number[];
+  productionCompanyIds: number[];
 }
 
 export interface UpdateTitleRequest {
@@ -60,6 +63,9 @@ export interface UpdateTitleRequest {
   localizationLanguages?: string | null;
   homePage?: string | null;
   avgTmdbRating?: number | null;
+  genreIds: number[];
+  spokenLanguageIds: number[];
+  productionCompanyIds: number[];
 }
 
 export interface CreateSeasonRequest {
@@ -104,6 +110,20 @@ export interface AdminTitleFormValues {
   localizationLanguages: string;
   homePage: string;
   avgTmdbRating: string;
+  genreIds: number[];
+  spokenLanguageIds: number[];
+  productionCompanyIds: number[];
+}
+
+export interface TitleReferenceOption {
+  id: number;
+  name: string;
+}
+
+export interface TitleReferenceOptions {
+  genres: TitleReferenceOption[];
+  spokenLanguages: TitleReferenceOption[];
+  productionCompanies: TitleReferenceOption[];
 }
 
 export interface AdminSeasonFormValues {

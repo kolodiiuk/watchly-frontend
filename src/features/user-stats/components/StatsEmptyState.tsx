@@ -6,9 +6,8 @@ export function StatsEmptyState() {
   return (
     <Card
       tone="raised"
-      className="relative overflow-hidden border-primary/15 bg-linear-to-br from-primary/10 via-surface-raised to-surface"
+      className="relative overflow-hidden border-primary/15 bg-surface/90"
     >
-      <div className="absolute inset-y-0 right-0 w-40 bg-linear-to-l from-primary/8 to-transparent" aria-hidden="true" />
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-primary/80">Dashboard empty</p>

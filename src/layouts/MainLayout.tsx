@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { ButtonLink } from '../components/common/ButtonLink';
 import { useAuth } from '../features/auth/services/AuthProvider.tsx';
+import {UserRole} from "../features/auth/models/UserRole.ts";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -28,17 +29,8 @@ export function MainLayout() {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-2 md:flex">
-            <NavLink to="/browse" className={navLinkClass}>
-              Browse
-            </NavLink>
-            <NavLink to="/watchlists" className={navLinkClass}>
-              Watchlist
-            </NavLink>
-          </nav>
-
           <div className="flex items-center gap-3">
-            {user ? (
+            {user ? ( user.role == UserRole.USER ? (
               <>
                 <NavLink to="/profile" className={navLinkClass}>
                   Profile
@@ -47,6 +39,16 @@ export function MainLayout() {
                   Sign out
                 </Button>
               </>
+              ) : (
+                <>
+                  <NavLink to="/admin/content" className={navLinkClass}>
+                    Profile
+                  </NavLink>
+                  <Button variant="secondary" onClick={handleSignOut}>
+                    Sign out
+                  </Button>
+                </>
+              )
             ) : (
               <>
                 <ButtonLink to="/auth/sign-in" variant="secondary">

@@ -1,11 +1,9 @@
-import {type ChangeEvent, useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {useParams} from 'react-router-dom';
 import {useAuth} from '../../auth/services/AuthProvider.tsx';
 import {Badge} from '../../../components/common/Badge.tsx';
-import {Button} from '../../../components/common/Button.tsx';
 import {Card} from '../../../components/common/Card.tsx';
 import {useGetTitleQuery} from '../../catalog/api/catalogApi.ts';
-import {useVoteTitleMutation} from '../../catalog/api/voteApi.ts';
 import {
   useDecrementSeasonWatchCountMutation,
   useGetTitleWatchStatusQuery,
@@ -19,7 +17,8 @@ import {formatGenericRating, formatRating, formatReleaseDate, formatRuntime, for
 import CommentSection from '../../comments/components/CommentSection';
 import {WatchProgressButton} from '../../watch-tracking/components/WatchProgressButton.tsx';
 import {SeriesSeasonsAccordion} from '../../watch-tracking/components/SeriesSeasonsAccordion.tsx';
-import {TitleWatchStatusSelector} from '../../watch-tracking/components/TitleWatchStatusSelector.tsx';
+import {TitleWatchListPanel} from '../../watch-list/components/TitleWatchListPanel.tsx';
+import {VoteControl} from '../../catalog/components/VoteControl.tsx';
 
 export function SeriesPage()
 {
@@ -29,14 +28,9 @@ export function SeriesPage()
   const {isAuthenticated, user} = useAuth();
   const userId = user?.id;
   const seasonsRef = useRef<HTMLDivElement>(null);
-  const [selectedVoteValue, setSelectedVoteValue] = useState(8);
-  const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
-  const [voteError, setVoteError] = useState<string | null>(null);
-  const [voteMessage, setVoteMessage] = useState<string | null>(null);
   const [watchStatusMutationError, setWatchStatusMutationError] = useState<string | null>(null);
 
   const {data: titleInfo, isLoading, isError} = useGetTitleQuery(contentId, {skip: !hasValidContentId});
-  const [voteTitle, {isLoading: isSubmittingVote}] = useVoteTitleMutation();
   const tvShowWatchInfoQuery = useGetTvShowWatchInfoQuery(contentId, {skip: !isAuthenticated || !hasValidContentId});
   const {
     data: seriesWatchStatus
@@ -53,54 +47,12 @@ export function SeriesPage()
 
   useEffect(() =>
   {
-    setHasSubmittedVote(false);
-    setVoteError(null);
-    setVoteMessage(null);
-  }, [contentId]);
-
-  useEffect(() =>
-  {
     const hash = window.location.hash;
     if (hash === '#seasons' && seasonsRef.current)
     {
       setTimeout(() => seasonsRef.current?.scrollIntoView({behavior: 'smooth'}), 0);
     }
   }, [titleInfo]);
-
-  const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) =>
-  {
-    setSelectedVoteValue(Number(event.target.value));
-    setVoteError(null);
-    setVoteMessage(null);
-  };
-
-  const handleVoteSubmit = async () =>
-  {
-    setVoteError(null);
-    setVoteMessage(null);
-
-    if (!isAuthenticated)
-    {
-      setVoteError('Please sign in to rate this title.');
-      return;
-    }
-
-    if (hasSubmittedVote)
-    {
-      setVoteError('Changing an existing vote needs vote lookup support from the current API.');
-      return;
-    }
-
-    try
-    {
-      await voteTitle({titleId: contentId, value: selectedVoteValue}).unwrap();
-      setHasSubmittedVote(true);
-      setVoteMessage(`Your rating of ${selectedVoteValue}/10 has been submitted.`);
-    } catch
-    {
-      setVoteError('We could not submit your vote right now.');
-    }
-  };
 
   const handleSeriesWatched = async () =>
   {
@@ -191,34 +143,27 @@ export function SeriesPage()
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Genres</div><div className="mt-3 flex flex-wrap gap-2">{genres.map(genre => <span key={genre} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{genre}</span>)}</div></div>
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Production companies</div><div className="mt-3 flex flex-wrap gap-2">{productionCompanies.map(company => <span key={company} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{company}</span>)}</div></div>
               </div>
-              <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
-                <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                  <label className="block"><span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span><select value={selectedVoteValue} onChange={onVoteValueSelect} disabled={!isAuthenticated || isSubmittingVote} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text disabled:opacity-70">{Array.from({length: 10}, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} / 10</option>)}</select></label>
-                  <Button type="button" onClick={handleVoteSubmit} disabled={isSubmittingVote || !isAuthenticated} className="lg:min-w-[150px]">{hasSubmittedVote ? 'Change vote' : 'Submit vote'}</Button>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)]">
+                <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
+                  <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
+                  {isAuthenticated && userId ? (
+                    <div className="mt-3">
+                      <WatchProgressButton
+                        watchCount={seriesWatchCount}
+                        itemLabel="series"
+                        onMarkWatched={handleSeriesWatched}
+                        onUnwatch={handleSeriesUnwatched}
+                        isLoading={tvShowWatchInfoQuery.isFetching || isIncrementingSeasonWatchCount || isDecrementingSeasonWatchCount}
+                        isError={tvShowWatchInfoQuery.isError || isIncrementSeasonWatchCountError || isDecrementSeasonWatchCountError}
+                        disabled={!titleInfo.seasons.length}
+                      />
+                      {watchStatusMutationError ? <p className="mt-2 text-sm text-danger">{watchStatusMutationError}</p> : null}
+                    </div>
+                  ) : null}
                 </div>
-                {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
-                {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
-                {isAuthenticated && userId ? (
-                  <div className="mt-3">
-                    <TitleWatchStatusSelector
-                      titleId={contentId}
-                      isAuthenticated={isAuthenticated}
-                      hasValidTitleId={hasValidContentId}
-                    />
-                    <WatchProgressButton
-                      watchCount={seriesWatchCount}
-                      itemLabel="series"
-                      onMarkWatched={handleSeriesWatched}
-                      onUnwatch={handleSeriesUnwatched}
-                      isLoading={tvShowWatchInfoQuery.isFetching || isIncrementingSeasonWatchCount || isDecrementingSeasonWatchCount}
-                      isError={tvShowWatchInfoQuery.isError || isIncrementSeasonWatchCountError || isDecrementSeasonWatchCountError}
-                      disabled={!titleInfo.seasons.length}
-                    />
-                    {watchStatusMutationError ? <p className="mt-2 text-sm text-danger">{watchStatusMutationError}</p> : null}
-                  </div>
-                ) : null}
+                <TitleWatchListPanel titleId={contentId} titleName={titleInfo.name} isAuthenticated={isAuthenticated}/>
               </div>
+              <VoteControl key={`title-${contentId}`} contentId={contentId} contentType="title" isAuthenticated={isAuthenticated}/>
             </div>
           </div>
         </Card>

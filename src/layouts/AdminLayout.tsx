@@ -4,56 +4,60 @@ import { Button } from '../components/common/Button';
 import { useAuth } from '../features/auth/services/AuthProvider.tsx';
 import { UserRole } from '../features/auth/models/UserRole';
 
-const adminNavClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    'rounded-2xl px-4 py-3 text-sm transition-colors',
-    isActive ? 'bg-warning/15 text-warning' : 'text-muted hover:bg-white/5 hover:text-text',
-  ].join(' ');
-
 export function AdminLayout() {
   const { user, signOut, role } = useAuth();
 
   return (
-    <div className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-10">
-      <aside className="rounded-3xl border border-border/80 bg-surface/80 p-4 backdrop-blur-xl">
-        <Link to="/" className="flex items-center gap-3 px-2 py-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning text-background font-black">
-            A
-          </span>
-          <div>
-            <div className="font-semibold text-text">Admin</div>
-            <div className="text-xs uppercase tracking-[0.24em] text-muted">Content operations</div>
+    <div className="min-h-screen">
+      <header className="border-b border-border/80 bg-surface/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
+          <Link to="/" className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning font-black text-background">
+              A
+            </span>
+            <div className="min-w-0">
+              <div className="font-semibold text-text">Admin</div>
+            </div>
+          </Link>
+
+          <nav className="order-3 flex w-full rounded-xl border border-border bg-background/40 p-1 sm:order-none sm:w-auto">
+            <NavLink
+              to="/admin/movies"
+              className={({ isActive }) =>
+                `flex-1 rounded-lg px-4 py-2 text-center text-sm font-medium transition-colors sm:flex-none ${
+                  isActive ? 'bg-warning text-background' : 'text-muted hover:bg-white/5 hover:text-text'
+                }`
+              }>
+              Movies
+            </NavLink>
+            <NavLink
+              to="/admin/series"
+              className={({ isActive }) =>
+                `flex-1 rounded-lg px-4 py-2 text-center text-sm font-medium transition-colors sm:flex-none ${
+                  isActive ? 'bg-warning text-background' : 'text-muted hover:bg-white/5 hover:text-text'
+                }`
+              }>
+              TV Series
+            </NavLink>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <div className="text-sm font-semibold text-text">{user?.displayName}</div>
+              <Badge className="mt-1" tone="warning">
+                {role === UserRole.ADMIN ? 'admin' : 'unknown'}
+              </Badge>
+            </div>
+            <Button variant="secondary" onClick={() => void signOut()}>
+              Sign out
+            </Button>
           </div>
-        </Link>
-
-        <div className="mt-5 space-y-2">
-          <NavLink to="/admin" end className={adminNavClass}>
-            Overview
-          </NavLink>
-          <NavLink to="/admin/users" className={adminNavClass}>
-            Users
-          </NavLink>
-          <NavLink to="/admin/content" className={adminNavClass}>
-            Content
-          </NavLink>
         </div>
+      </header>
 
-        <div className="mt-6 rounded-2xl border border-border bg-background/35 p-4">
-          <div className="text-xs uppercase tracking-[0.24em] text-muted">Signed in as</div>
-          <div className="mt-2 font-semibold text-text">{user?.displayName}</div>
-          <Badge className="mt-3" tone="warning">
-            {role === UserRole.ADMIN ? 'pages' : 'unknown'}
-          </Badge>
-        </div>
-
-        <Button className="mt-4 w-full" variant="secondary" onClick={() => void signOut()}>
-          Sign out
-        </Button>
-      </aside>
-
-      <section className="space-y-6">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
         <Outlet />
-      </section>
+      </main>
     </div>
   );
 }

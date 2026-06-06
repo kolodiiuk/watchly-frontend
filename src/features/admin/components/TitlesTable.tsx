@@ -31,7 +31,9 @@ export function TitlesTable({ rows, activeTitleId = null, onEdit, onDelete, onMa
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-text">{row.name}</p>
             </div>
-            <Badge tone={row.type === 'movie' ? 'accent' : 'warning'}>{row.type === 'movie' ? 'movie' : 'tv show'}</Badge>
+            <Badge className="w-full justify-center text-center" tone={row.type === 'movie' ? 'accent' : 'warning'}>
+              {row.type === 'movie' ? 'movie' : 'tv show'}
+            </Badge>
             <p className="text-sm text-muted">{row.releaseDate}</p>
             <p className="text-sm text-muted">{row.rating.toFixed(1)}</p>
             <TitleRowActions

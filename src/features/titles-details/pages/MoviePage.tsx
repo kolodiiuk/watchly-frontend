@@ -10,7 +10,6 @@ import {
 } from '../../watch-tracking/api/watchTrackingApi.ts';
 import {TitleType} from '../models/TitleType.ts';
 import {WatchProgressButton} from '../../watch-tracking/components/WatchProgressButton.tsx';
-import {TitleWatchStatusSelector} from '../../watch-tracking/components/TitleWatchStatusSelector.tsx';
 import {
   formatGenericRating,
   formatRating,
@@ -23,6 +22,8 @@ import {
   splitDisplayValues
 } from '../../../utils/formatters.ts';
 import CommentSection from '../../comments/components/CommentSection';
+import {TitleWatchListPanel} from '../../watch-list/components/TitleWatchListPanel.tsx';
+import {VoteControl} from '../../catalog/components/VoteControl.tsx';
 
 export function MoviePage()
 {
@@ -127,27 +128,26 @@ export function MoviePage()
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Genres</div><div className="mt-3 flex flex-wrap gap-2">{genres.map(genre => <span key={genre} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{genre}</span>)}</div></div>
                 <div className="rounded-2xl border border-border/80 bg-background/35 p-4"><div className="text-xs uppercase tracking-[0.2em] text-muted">Production companies</div><div className="mt-3 flex flex-wrap gap-2">{productionCompanies.map(company => <span key={company} className="rounded-full border border-border/80 bg-background/50 px-3 py-1.5 text-sm text-text">{company}</span>)}</div></div>
               </div>
+              <VoteControl key={`title-${contentId}`} contentId={contentId} contentType="title" isAuthenticated={isAuthenticated}/>
               {isAuthenticated && userId ? (
-                <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
-                  <p className="text-sm uppercase tracking-[0.24em] text-accent">Watching progress</p>
-                  <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                    <TitleWatchStatusSelector
-                      titleId={contentId}
-                      isAuthenticated={isAuthenticated}
-                      hasValidTitleId={hasValidContentId}
-                    />
-                    <WatchProgressButton
-                      watchCount={movieWatchCount}
-                      itemLabel="movie"
-                      onMarkWatched={handleMovieWatched}
-                      onUnwatch={handleMovieUnwatched}
-                      isLoading={isMovieWatchCountFetching || isIncrementingMovieWatchCount || isDecrementingMovieWatchCount}
-                      isError={isMovieWatchCountError || isIncrementMovieWatchCountError || isDecrementMovieWatchCountError}
-                      className="lg:min-w-[220px]"
-                    />
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)]">
+                  <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
+                    <p className="text-sm uppercase tracking-[0.24em] text-accent">Watching progress</p>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                      <WatchProgressButton
+                        watchCount={movieWatchCount}
+                        itemLabel="movie"
+                        onMarkWatched={handleMovieWatched}
+                        onUnwatch={handleMovieUnwatched}
+                        isLoading={isMovieWatchCountFetching || isIncrementingMovieWatchCount || isDecrementingMovieWatchCount}
+                        isError={isMovieWatchCountError || isIncrementMovieWatchCountError || isDecrementMovieWatchCountError}
+                        className="lg:min-w-[220px]"
+                      />
+                    </div>
                   </div>
+                  <TitleWatchListPanel titleId={contentId} titleName={titleInfo.name} isAuthenticated={isAuthenticated}/>
                 </div>
-              ) : null}
+              ) : <TitleWatchListPanel titleId={contentId} titleName={titleInfo.name} isAuthenticated={isAuthenticated}/>}
             </div>
           </div>
         </Card>

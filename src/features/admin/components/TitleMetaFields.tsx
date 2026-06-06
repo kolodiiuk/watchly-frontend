@@ -51,7 +51,6 @@ export function TitleMetaFields({ values, errors = {}, onChange }: TitleMetaFiel
           ) : null}
         </label>
       </div>
-      <p className="text-xs text-muted">Use comma-separated languages to match the current backend contract.</p>
     </section>
   );
 }

@@ -3,7 +3,7 @@ import type { TitleType } from "./TitleType";
 
 export interface TitleInfo {
   id: number;
-  releaseDate: string;
+  releaseDate?: string | null;
   runtime: number;
   titleType: TitleType;
   avgTmdbRating?: number | null;
@@ -21,6 +21,9 @@ export interface TitleInfo {
   genres: string[];
   seasons: SeasonInfo[];
   spokenLanguages: string[];
+  genreIds: number[];
+  productionCompanyIds: number[];
+  spokenLanguageIds: number[];
 }
 
 export interface TitleShortInfo {

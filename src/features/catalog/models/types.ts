@@ -2,6 +2,7 @@ export interface SearchParams {
   term?: string;
   page?: number;
   pageSize?: number;
+  titleTypes?: number[];
 }
 
 export interface IntRange {

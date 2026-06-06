@@ -1,5 +1,5 @@
 import { Clock3 } from 'lucide-react';
-import { formatDuration, formatNumber, type DurationParts } from './statsUtils.ts';
+import { formatDuration, type DurationParts } from './statsUtils.ts';
 
 type DurationBreakdownProps = {
   duration: DurationParts;
@@ -13,10 +13,6 @@ export function DurationBreakdown({ duration }: DurationBreakdownProps) {
         Duration
       </div>
       <p className="mt-3 text-lg font-medium text-text">{formatDuration(duration)}</p>
-      <p className="mt-2 text-sm text-muted">
-        {formatNumber(duration.months)} months logged across full months, {formatNumber(duration.days)} remaining days,
-        and {formatNumber(duration.hours)} remaining hours.
-      </p>
     </div>
   );
 }

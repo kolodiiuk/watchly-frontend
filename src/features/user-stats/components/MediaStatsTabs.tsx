@@ -21,7 +21,7 @@ export function MediaStatsTabs({ movieStats, seriesStats }: MediaStatsTabsProps)
           <p className="mt-1 text-sm text-muted">Move between movie and series views without repeating the same card stack.</p>
         </div>
         <div
-          className="inline-flex rounded-full border border-border/80 bg-background/60 p-1"
+          className="inline-flex rounded-full border border-border/80 bg-background/60 p-1 xl:hidden"
           role="tablist"
           aria-label="Media statistics views"
         >

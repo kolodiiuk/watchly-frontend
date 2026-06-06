@@ -68,13 +68,3 @@ export function normalizeSeriesStats(stats?: SeriesStatsResponse | null): Normal
     topGenres: stats?.topGenres ?? [],
   };
 }
-export function buildRankedGenres(topGenres: string[]) {
-  const maxRank = Math.max(topGenres.length, 1);
-
-  return topGenres.map((name, index) => ({
-    name,
-    count: null,
-    percentage: Math.round(((maxRank - index) / maxRank) * 100),
-    rank: index + 1,
-  }));
-}

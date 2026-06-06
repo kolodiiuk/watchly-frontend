@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { AdminTitleFormValues } from '../models/types';
 import type { ValidationErrors } from '../services/validation';
 import { TitleBaseFields } from './TitleBaseFields';
 import { TitleMetaFields } from './TitleMetaFields';
+import { TitleRelationsFields } from './TitleRelationsFields';
 import { TitleTypeSwitch } from './TitleTypeSwitch';
 import { FormActions } from './FormActions';
 
@@ -25,17 +26,31 @@ export function TitleFormModal({
   onClose,
   onSubmit,
 }: TitleFormModalProps) {
-  const [values, setValues] = useState(initialValues);
-
-  useEffect(() => {
-    if (isOpen) {
-      setValues(initialValues);
-    }
-  }, [initialValues, isOpen]);
-
   if (!isOpen) {
     return null;
   }
+
+  return (
+    <TitleFormContent
+      mode={mode}
+      initialValues={initialValues}
+      errors={errors}
+      isSubmitting={isSubmitting}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+}
+
+function TitleFormContent({
+  mode = 'create',
+  initialValues,
+  errors = {},
+  isSubmitting = false,
+  onClose,
+  onSubmit,
+}: Omit<TitleFormModalProps, 'isOpen'>) {
+  const [values, setValues] = useState(initialValues);
 
   const handleSubmit = () => onSubmit?.(values);
 
@@ -47,6 +62,7 @@ export function TitleFormModal({
           <TitleTypeSwitch value={values.titleType} onChange={titleType => setValues(current => ({ ...current, titleType }))} />
           <TitleBaseFields values={values} errors={errors} onChange={patch => setValues(current => ({ ...current, ...patch }))} />
           <TitleMetaFields values={values} errors={errors} onChange={patch => setValues(current => ({ ...current, ...patch }))} />
+          <TitleRelationsFields values={values} onChange={patch => setValues(current => ({ ...current, ...patch }))} />
           <FormActions
             saveLabel={mode === 'create' ? 'Create' : 'Save changes'}
             onCancel={onClose}

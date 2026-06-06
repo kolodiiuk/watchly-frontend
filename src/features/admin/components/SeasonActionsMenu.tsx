@@ -14,17 +14,23 @@ export function SeasonActionsMenu({ canDelete = true, onAddEpisode, onEdit, onDe
       <Button variant="ghost" className="px-3 py-2" leadingIcon={<Plus className="h-4 w-4" />} onClick={onAddEpisode}>
         Add episode
       </Button>
-      <Button variant="ghost" className="px-3 py-2" leadingIcon={<Pencil className="h-4 w-4" />} onClick={onEdit}>
-        Edit
-      </Button>
       <Button
         variant="ghost"
-        className="px-3 py-2 text-danger hover:text-danger"
+        className="h-9 w-9 justify-center !gap-0 !p-0"
+        leadingIcon={<Pencil className="h-4 w-4" />}
+        onClick={onEdit}
+        aria-label="Edit season"
+        title="Edit season"
+      />
+      <Button
+        variant="ghost"
+        className="h-9 w-9 justify-center !gap-0 !p-0 text-danger hover:text-danger"
         leadingIcon={<Trash2 className="h-4 w-4" />}
         onClick={onDelete}
-        disabled={!canDelete}>
-        Delete
-      </Button>
+        disabled={!canDelete}
+        aria-label="Delete season"
+        title="Delete season"
+      />
     </div>
   );
 }

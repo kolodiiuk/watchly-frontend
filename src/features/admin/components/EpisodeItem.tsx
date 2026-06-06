@@ -19,16 +19,22 @@ export function EpisodeItem({ episode, onEdit, onDelete }: EpisodeItemProps) {
         </p>
       </div>
       <div className="flex gap-1">
-        <Button variant="ghost" className="px-2 py-1.5" leadingIcon={<Pencil className="h-4 w-4" />} onClick={onEdit}>
-          Edit
-        </Button>
         <Button
           variant="ghost"
-          className="px-2 py-1.5 text-danger hover:text-danger"
+          className="h-8 w-8 justify-center !gap-0 !p-0"
+          leadingIcon={<Pencil className="h-4 w-4" />}
+          onClick={onEdit}
+          aria-label={`Edit episode ${episode.name}`}
+          title="Edit episode"
+        />
+        <Button
+          variant="ghost"
+          className="h-8 w-8 justify-center !gap-0 !p-0 text-danger hover:text-danger"
           leadingIcon={<Trash2 className="h-4 w-4" />}
-          onClick={onDelete}>
-          Delete
-        </Button>
+          onClick={onDelete}
+          aria-label={`Delete episode ${episode.name}`}
+          title="Delete episode"
+        />
       </div>
     </div>
   );

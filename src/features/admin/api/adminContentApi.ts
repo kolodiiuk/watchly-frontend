@@ -1,10 +1,22 @@
 import { baseApi } from '../../../app/api/baseApi.ts';
-import type { CreateEpisodeRequest, CreateSeasonRequest, CreateTitleRequest, UpdateEpisodeRequest, UpdateSeasonRequest, UpdateTitleRequest } from '../models/types.ts';
+import type { CreateEpisodeRequest, CreateSeasonRequest, CreateTitleRequest, TitleReferenceOptions, UpdateEpisodeRequest, UpdateSeasonRequest, UpdateTitleRequest } from '../models/types.ts';
 
 const adminContentTag = { type: 'AdminContent' as const, id: 'LIST' };
 
 export const adminContentApi = baseApi.injectEndpoints({
   endpoints: builder => ({
+    getTitleReferenceOptions: builder.query<TitleReferenceOptions, { productionCompanyTerm: string; selectedProductionCompanyIds: number[] }>({
+      query: ({ productionCompanyTerm, selectedProductionCompanyIds }) => {
+        const query = new URLSearchParams();
+        if (productionCompanyTerm) {
+          query.set('productionCompanyTerm', productionCompanyTerm);
+        }
+        selectedProductionCompanyIds.forEach(id => query.append('selectedProductionCompanyIds', String(id)));
+
+        return { url: `admincontent/title-reference-options?${query.toString()}`, method: 'GET' };
+      },
+    }),
+
     addTitle: builder.mutation<number, CreateTitleRequest>({
       query: body => ({
         url: 'admincontent/titles',
@@ -101,6 +113,7 @@ export const adminContentApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetTitleReferenceOptionsQuery,
   useAddTitleMutation,
   useUpdateTitleMutation,
   useUploadPosterMutation,

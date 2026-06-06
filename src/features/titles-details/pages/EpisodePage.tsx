@@ -1,11 +1,8 @@
-import {type ChangeEvent, useEffect, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import {useAuth} from '../../auth/services/AuthProvider.tsx';
 import {Badge} from '../../../components/common/Badge.tsx';
-import {Button} from '../../../components/common/Button.tsx';
 import {Card} from '../../../components/common/Card.tsx';
 import {useGetEpisodeQuery} from '../../catalog/api/catalogApi.ts';
-import {useVoteEpisodeMutation} from '../../catalog/api/voteApi.ts';
 import {
   useDecrementEpisodeWatchCountMutation,
   useGetEpisodeWatchCountQuery,
@@ -15,6 +12,7 @@ import {TitleType} from '../models/TitleType.ts';
 import {formatGenericRating, formatVoteCount, getFullImageUrl} from '../../../utils/formatters.ts';
 import CommentSection from '../../comments/components/CommentSection';
 import {WatchProgressButton} from '../../watch-tracking/components/WatchProgressButton.tsx';
+import {VoteControl} from '../../catalog/components/VoteControl.tsx';
 
 function TitleLink({titleId, titleName, hash}: { titleId: number; titleName: string; hash?: string })
 {
@@ -28,12 +26,7 @@ export function EpisodePage()
   const hasValidContentId = Number.isInteger(contentId) && contentId > 0;
   const {isAuthenticated, user} = useAuth();
   const userId = user?.id;
-  const [selectedVoteValue, setSelectedVoteValue] = useState(8);
-  const [hasSubmittedVote, setHasSubmittedVote] = useState(false);
-  const [voteError, setVoteError] = useState<string | null>(null);
-  const [voteMessage, setVoteMessage] = useState<string | null>(null);
   const {data: episodeInfo, isLoading, isError} = useGetEpisodeQuery(contentId, {skip: !hasValidContentId});
-  const [voteEpisode, {isLoading: isSubmittingVote}] = useVoteEpisodeMutation();
   const {
     data: episodeWatchCount = 0,
     isFetching: isEpisodeWatchCountFetching,
@@ -47,45 +40,6 @@ export function EpisodePage()
     decrementEpisodeWatchCount,
     {isLoading: isDecrementingEpisodeWatchCount, isError: isDecrementEpisodeWatchCountError}
   ] = useDecrementEpisodeWatchCountMutation();
-
-  useEffect(() =>
-  {
-    setHasSubmittedVote(false);
-    setVoteError(null);
-    setVoteMessage(null);
-  }, [contentId]);
-
-  const onVoteValueSelect = (event: ChangeEvent<HTMLSelectElement>) =>
-  {
-    setSelectedVoteValue(Number(event.target.value));
-    setVoteError(null);
-    setVoteMessage(null);
-  };
-
-  const handleVoteSubmit = async () =>
-  {
-    setVoteError(null);
-    setVoteMessage(null);
-    if (!isAuthenticated)
-    {
-      setVoteError('Please sign in to rate this episode.');
-      return;
-    }
-    if (hasSubmittedVote)
-    {
-      setVoteError('Changing an existing vote needs vote lookup support from the current API.');
-      return;
-    }
-    try
-    {
-      await voteEpisode({episodeId: contentId, value: selectedVoteValue}).unwrap();
-      setHasSubmittedVote(true);
-      setVoteMessage(`Your rating of ${selectedVoteValue}/10 has been submitted.`);
-    } catch
-    {
-      setVoteError('We could not submit your vote right now.');
-    }
-  };
 
   const handleEpisodeWatched = async () =>
   {
@@ -144,12 +98,6 @@ export function EpisodePage()
               </div>
               <div className="rounded-3xl border border-border/80 bg-background/30 p-5">
                 <p className="text-sm uppercase tracking-[0.24em] text-accent">Status and actions</p>
-                <div className="grid gap-3 mt-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                  <label className="block"><span className="text-xs uppercase tracking-[0.2em] text-muted">Your Watchly rating</span><select value={selectedVoteValue} onChange={onVoteValueSelect} disabled={!isAuthenticated || isSubmittingVote} className="mt-2 w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text disabled:opacity-70">{Array.from({length: 10}, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} / 10</option>)}</select></label>
-                  <Button type="button" onClick={handleVoteSubmit} disabled={isSubmittingVote || !isAuthenticated} className="lg:min-w-[150px]">{hasSubmittedVote ? 'Change vote' : 'Submit vote'}</Button>
-                </div>
-                {voteError ? <p className="mt-2 text-sm text-danger">{voteError}</p> : null}
-                {voteMessage ? <p className="mt-2 text-sm text-success">{voteMessage}</p> : null}
                 {isAuthenticated && userId ? (
                   <div className="mt-3">
                     <WatchProgressButton
@@ -163,6 +111,7 @@ export function EpisodePage()
                   </div>
                 ) : null}
               </div>
+              <VoteControl key={`episode-${contentId}`} contentId={contentId} contentType="episode" isAuthenticated={isAuthenticated}/>
             </div>
           </div>
         </Card>

@@ -20,9 +20,14 @@ export function TitleRowActions({
 }: TitleRowActionsProps) {
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button variant="ghost" className="px-3 py-2" leadingIcon={<Pencil className="h-4 w-4" />} onClick={onEdit}>
-        Edit
-      </Button>
+      <Button
+        variant="ghost"
+        className="h-9 w-9 justify-center !gap-0 !p-0"
+        leadingIcon={<Pencil className="h-4 w-4" />}
+        onClick={onEdit}
+        aria-label="Edit title"
+        title="Edit title"
+      />
       {isSeries && (
         <Button
           variant="ghost"
@@ -35,13 +40,13 @@ export function TitleRowActions({
       )}
       <Button
         variant="ghost"
-        className="px-3 py-2 text-danger hover:text-danger"
+        className="h-9 w-9 justify-center !gap-0 !p-0 text-danger hover:text-danger"
         leadingIcon={<Trash2 className="h-4 w-4" />}
         onClick={onDelete}
-        disabled={!canDelete}>
-        Delete
-      </Button>
+        disabled={!canDelete}
+        aria-label="Delete title"
+        title="Delete title"
+      />
     </div>
   );
 }
-

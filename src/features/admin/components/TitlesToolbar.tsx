@@ -11,6 +11,7 @@ interface TitlesToolbarProps {
   onSearchSubmit?: () => void;
   onTypeChange?: (value: AdminTitleTypeFilter) => void;
   onSortChange?: (value: AdminSortOption) => void;
+  showTypeFilter?: boolean;
 }
 
 export function TitlesToolbar({
@@ -21,6 +22,7 @@ export function TitlesToolbar({
   onSearchSubmit,
   onTypeChange,
   onSortChange,
+  showTypeFilter = true,
 }: TitlesToolbarProps) {
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => onSearchChange?.(event.target.value);
   const handleTypeChange = (event: ChangeEvent<HTMLSelectElement>) =>
@@ -48,14 +50,16 @@ export function TitlesToolbar({
         Search
       </Button>
 
-      <select
-        value={selectedType}
-        onChange={handleTypeChange}
-        className="rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40">
-        <option value="all">All</option>
-        <option value="movie">Movies</option>
-        <option value="series">TV Shows</option>
-      </select>
+      {showTypeFilter ? (
+        <select
+          value={selectedType}
+          onChange={handleTypeChange}
+          className="rounded-xl border border-border bg-background/50 px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40">
+          <option value="all">All</option>
+          <option value="movie">Movies</option>
+          <option value="series">TV Shows</option>
+        </select>
+      ) : null}
 
       <select
         value={selectedSort}

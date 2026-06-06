@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import { BrowsePage } from '../../features/catalog/BrowsePage';
 //import { HomePage } from '../pages/HomePage';
@@ -12,7 +12,9 @@ import { SeriesPage } from '../../features/titles-details/pages/SeriesPage.tsx';
 import { EpisodePage } from '../../features/titles-details/pages/EpisodePage.tsx';
 import { ForgetPasswordPage } from '../../features/auth/pages/ForgetPasswordPage.tsx';
 import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage.tsx';
-import { AdminContentPage } from '../../features/admin/pages/AdminContentPage.tsx';
+import { AdminMoviesPage } from '../../features/admin/pages/AdminMoviesPage.tsx';
+import { AdminSeriesPage } from '../../features/admin/pages/AdminSeriesPage.tsx';
+import { AdminSeriesSeasonsPage } from '../../features/admin/pages/AdminSeriesSeasonsPage.tsx';
 import { UserRole } from '../../features/auth/models/UserRole.ts';
 import { StatsPage } from '../../features/user-stats/pages/StatsPage.tsx';
 import { WatchListsPage } from '../../features/watch-list/pages/WatchListsPage.tsx';
@@ -27,10 +29,6 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <BrowsePage />,
-      },
-      {
-        path: 'browse',
         element: <BrowsePage />,
       },
       {
@@ -107,7 +105,19 @@ const router = createBrowserRouter([
     children: [
       {
         path: 'admin/content',
-        element: <AdminContentPage />,
+        element: <Navigate to="/admin/movies" replace />,
+      },
+      {
+        path: 'admin/movies',
+        element: <AdminMoviesPage />,
+      },
+      {
+        path: 'admin/series',
+        element: <AdminSeriesPage />,
+      },
+      {
+        path: 'admin/series/:titleId/seasons',
+        element: <AdminSeriesSeasonsPage />,
       },
     ],
   },
