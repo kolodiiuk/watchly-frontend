@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useCallback } from 'react';
 import type { PropsWithChildren } from 'react';
-import type { User } from '../../../app/models/User.ts';
-import { useSignOutMutation } from '../../../app/api/authApi.ts';
+import type { User } from '../models/User.ts';
+import { useSignOutMutation } from '../api/authApi.ts';
 import { clearCredentials, initializeAuth } from './authSlice.ts';
 import { authStorage } from './authStorage.ts';
 import { useDispatch, useSelector } from 'react-redux';

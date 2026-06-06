@@ -1,6 +1,6 @@
 import { createListenerMiddleware } from '@reduxjs/toolkit';
 import { clearCredentials, setCredentials } from '../features/auth/services/authSlice.ts';
-import { authApi } from './api/authApi.ts';
+import { authApi } from '../features/auth/api/authApi.ts';
 import type { RootState } from './store.ts';
 import { resolveRole } from '../features/auth/services/authSession.ts';
 

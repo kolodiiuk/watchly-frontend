@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../../../components/ui/Button.tsx';
-import { Card } from '../../../components/ui/Card.tsx';
-import { type SignUpRequest, useSignUpMutation } from '../../../app/api/authApi.ts';
+import { Button } from '../../../components/common/Button.tsx';
+import { Card } from '../../../components/common/Card.tsx';
+import { type SignUpRequest, useSignUpMutation } from '../api/authApi.ts';
 
 export function SignUpPage() {
   const navigate = useNavigate();
