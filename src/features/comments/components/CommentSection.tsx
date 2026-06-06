@@ -1,4 +1,7 @@
 import {useDispatch} from "react-redux";
+import type {AppDispatch} from "../store";
+import {useAuth} from "../../features/auth/services/AuthProvider";
+import {useEffect, useMemo, useRef, useState} from "react";
 import type {AppDispatch} from "../../../app/store";
 import {useAuth} from "../../auth/services/AuthProvider";
 import {useEffect, useMemo, useState} from "react";
@@ -15,6 +18,10 @@ import {Badge} from "../../../components/common/Badge";
 import {Button} from "../../../components/common/Button";
 import {formatCommentDate, getCommentAuthorName, getContentType} from "../../../utils/formatters";
 import {TitleType} from "../../titles-details/models/TitleType.ts";
+import {
+  useGetRelevantEpisodeCommentsMutation,
+  useGetRelevantTitleCommentsMutation
+} from "../api/assistantApi";
 
 function PenIcon()
 {
@@ -24,6 +31,127 @@ function PenIcon()
       <path strokeLinecap="round" strokeLinejoin="round" d="m13.5 6.5 4 4"/>
     </svg>
   );
+}
+
+type HighlightRange = {
+  start: number;
+  end: number;
+};
+
+function decodeAssistantText(text: string)
+{
+  return text
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/\\(["\\/bfnrt])/g, (_, token: string) =>
+    {
+      switch (token)
+      {
+        case 'b':
+          return '\b';
+        case 'f':
+          return '\f';
+        case 'n':
+          return '\n';
+        case 'r':
+          return '\r';
+        case 't':
+          return '\t';
+        default:
+          return token;
+      }
+    });
+}
+
+function getHighlightRanges(originalText: string, highlightedText: string): HighlightRange[]
+{
+  const decodedHighlightedText = decodeAssistantText(highlightedText);
+  const parts = decodedHighlightedText.split(/(<\/?mark>)/gi).filter(Boolean);
+  const ranges: HighlightRange[] = [];
+  let originalIndex = 0;
+  let isMarked = false;
+
+  for (const part of parts)
+  {
+    const normalizedPart = part.toLowerCase();
+    if (normalizedPart === '<mark>')
+    {
+      isMarked = true;
+      continue;
+    }
+
+    if (normalizedPart === '</mark>')
+    {
+      isMarked = false;
+      continue;
+    }
+
+    const matchIndex = originalText.indexOf(part, originalIndex);
+    if (matchIndex === -1)
+    {
+      return [];
+    }
+
+    if (isMarked && part.length > 0)
+    {
+      const previousRange = ranges[ranges.length - 1];
+      if (previousRange && previousRange.end === matchIndex)
+      {
+        previousRange.end = matchIndex + part.length;
+      } else
+      {
+        ranges.push({
+          start: matchIndex,
+          end: matchIndex + part.length,
+        });
+      }
+    }
+
+    originalIndex = matchIndex + part.length;
+  }
+
+  return ranges;
+}
+
+function renderCommentText(originalText: string, highlightRanges: HighlightRange[])
+{
+  if (!highlightRanges.length)
+  {
+    return originalText;
+  }
+
+  const fragments = [];
+  let currentIndex = 0;
+
+  for (const range of highlightRanges)
+  {
+    if (range.start > currentIndex)
+    {
+      fragments.push(
+        <span key={`plain-${currentIndex}`}>
+          {originalText.slice(currentIndex, range.start)}
+        </span>
+      );
+    }
+
+    fragments.push(
+      <mark key={`mark-${range.start}`} className="rounded bg-primary/25 px-1 text-text">
+        {originalText.slice(range.start, range.end)}
+      </mark>
+    );
+
+    currentIndex = range.end;
+  }
+
+  if (currentIndex < originalText.length)
+  {
+    fragments.push(
+      <span key={`plain-${currentIndex}`}>
+        {originalText.slice(currentIndex)}
+      </span>
+    );
+  }
+
+  return fragments;
 }
 
 export interface CommentSectionProps {
@@ -45,6 +173,10 @@ export default function CommentSection(props: CommentSectionProps)
   const [selectedOwnCommentId, setSelectedOwnCommentId] = useState<number | null>(null);
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [includeOwnCommentsInAssistantSearch, setIncludeOwnCommentsInAssistantSearch] = useState(true);
+  const [assistantHighlightRangesByCommentId, setAssistantHighlightRangesByCommentId] = useState<Record<number, HighlightRange[]>>({});
+  const [assistantSearchTopic, setAssistantSearchTopic] = useState<string | null>(null);
+  const assistantSearchRequestIdRef = useRef(0);
+  const pendingAssistantSearchRef = useRef<{ abort?: () => void } | null>(null);
   const titleCommentsQuery = useGetCommentsByTitleQuery(contentId, {
     skip: !hasValidContentId || isEpisodeRoute,
   });
@@ -145,8 +277,102 @@ export default function CommentSection(props: CommentSectionProps)
   const [leaveComment, {isLoading: isLeavingComment}] = useLeaveCommentMutation();
   const [updateComment, {isLoading: isUpdatingComment}] = useUpdateCommentMutation();
   const [deleteComment, {isLoading: isDeletingComment}] = useDeleteCommentMutation();
-  const handleAssistantCommentSearch = (_prompt: string, _includeOwnComments: boolean) =>
+  const [getRelevantTitleComments, {isLoading: isSearchingTitleComments}] = useGetRelevantTitleCommentsMutation();
+  const [getRelevantEpisodeComments, {isLoading: isSearchingEpisodeComments}] = useGetRelevantEpisodeCommentsMutation();
+  const isAssistantSearchActive = assistantSearchTopic !== null;
+  const isAssistantSearchLoading = isSearchingTitleComments || isSearchingEpisodeComments;
+  const displayedComments = useMemo(() =>
   {
+    if (!isAssistantSearchActive)
+    {
+      return sortedComments;
+    }
+
+    return sortedComments.filter(comment =>
+      Object.prototype.hasOwnProperty.call(assistantHighlightRangesByCommentId, comment.id)
+    );
+  }, [assistantHighlightRangesByCommentId, isAssistantSearchActive, sortedComments]);
+  const handleAssistantCommentSearch = async (prompt: string, includeOwnComments: boolean) =>
+  {
+    if (!hasValidContentId)
+    {
+      return;
+    }
+
+    const requestId = assistantSearchRequestIdRef.current + 1;
+    assistantSearchRequestIdRef.current = requestId;
+    let request: ReturnType<typeof getRelevantTitleComments> | ReturnType<typeof getRelevantEpisodeComments> | null = null;
+
+    try
+    {
+      request = isEpisodeRoute
+        ? getRelevantEpisodeComments({
+          episodeId: contentId,
+          request: {
+            topic: prompt,
+            excludeOwnComments: !includeOwnComments,
+          },
+        })
+        : getRelevantTitleComments({
+          titleId: contentId,
+          request: {
+            topic: prompt,
+            excludeOwnComments: !includeOwnComments,
+          },
+        });
+
+      pendingAssistantSearchRef.current = request;
+      const highlights = await request.unwrap();
+
+      if (assistantSearchRequestIdRef.current !== requestId)
+      {
+        return;
+      }
+
+      const nextHighlightRangesByCommentId: Record<number, HighlightRange[]> = {};
+
+      for (const highlight of highlights)
+      {
+        const matchedComment = comments.find(comment => comment.id === highlight.id);
+        if (!matchedComment)
+        {
+          continue;
+        }
+
+        nextHighlightRangesByCommentId[matchedComment.id] = getHighlightRanges(
+          matchedComment.text,
+          highlight.highlighted
+        );
+      }
+
+      setAssistantHighlightRangesByCommentId(nextHighlightRangesByCommentId);
+      setAssistantSearchTopic(prompt);
+    } catch
+    {
+      if (assistantSearchRequestIdRef.current !== requestId)
+      {
+        return;
+      }
+
+      setAssistantHighlightRangesByCommentId({});
+      setAssistantSearchTopic(null);
+      window.alert('We could not search comments right now. Please try again.');
+    } finally
+    {
+      if (pendingAssistantSearchRef.current === request)
+      {
+        pendingAssistantSearchRef.current = null;
+      }
+    }
+  };
+
+  const handleCancelAssistantSearch = () =>
+  {
+    assistantSearchRequestIdRef.current += 1;
+    pendingAssistantSearchRef.current?.abort?.();
+    pendingAssistantSearchRef.current = null;
+    setAssistantHighlightRangesByCommentId({});
+    setAssistantSearchTopic(null);
   };
 
   const updateCommentsCacheAfterEdit = (commentId: number, text: string) =>
@@ -372,19 +598,14 @@ export default function CommentSection(props: CommentSectionProps)
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-accent">AI comment search</p>
               <h3 className="mt-2 text-xl font-semibold text-text">Find the most relevant reactions</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                Ask the assistant to surface comments that match a topic, mood, spoiler concern, or specific
-                question.
-              </p>
             </div>
-            <Badge tone="accent">Preview tool</Badge>
           </div>
         </div>
 
         <div className="rounded-b-[inherit] space-y-4 bg-background/20 p-5">
           <div className="rounded-2xl border border-primary/20 bg-background/35 px-4 py-3 text-sm leading-6 text-muted">
-            This panel is reserved for future assistant-powered comment discovery and works separately from
-            writing or editing your own comment.
+            Search the current discussion with the assistant, then review only the returned comments with
+            highlights applied.
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -402,9 +623,9 @@ export default function CommentSection(props: CommentSectionProps)
             <Button
               type="button"
               onClick={handleAssistantSearchSubmit}
-              disabled={!assistantPrompt.trim()}
+              disabled={!assistantPrompt.trim() || isAssistantSearchLoading}
               className="lg:min-w-[160px]">
-              Search comments
+              {isAssistantSearchLoading ? 'Searching...' : 'Search comments'}
             </Button>
           </div>
 
@@ -417,6 +638,32 @@ export default function CommentSection(props: CommentSectionProps)
             />
             <span>Include my comments in the assistant search</span>
           </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {isAssistantSearchActive ? (
+              <>
+                <Badge tone="accent">
+                  {displayedComments.length} relevant comment{displayedComments.length === 1 ? '' : 's'}
+                </Badge>
+                <p className="text-sm text-muted">
+                  Showing results for "{assistantSearchTopic}"
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted">
+              </p>
+            )}
+
+            {(isAssistantSearchActive || isAssistantSearchLoading) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancelAssistantSearch}
+                disabled={!isAssistantSearchActive && !isAssistantSearchLoading}>
+                Cancel search
+              </Button>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -430,10 +677,6 @@ export default function CommentSection(props: CommentSectionProps)
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-muted">Your comments</div>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      Your comments stay pinned to the top of the discussion. Pick one to revise, or start a new
-                      note.
-                    </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -502,7 +745,7 @@ export default function CommentSection(props: CommentSectionProps)
             </div>
 
             <label className="block space-y-2">
-              <span className="text-sm text-muted">Comment</span>
+              <span className="text-sm text-muted"></span>
               <textarea
                 value={commentDraft}
                 onChange={event => setCommentDraft(event.target.value)}
@@ -568,12 +811,13 @@ export default function CommentSection(props: CommentSectionProps)
           <div className="rounded-3xl border border-danger/30 bg-danger/5 p-5 text-sm text-danger">
             We could not load comments for this {getContentType(isEpisodeRoute, titleType)} right now.
           </div>
-        ) : sortedComments.length ? (
-          sortedComments.map(comment =>
+        ) : displayedComments.length ? (
+          displayedComments.map(comment =>
           {
             const isOwnComment = comment.userId === user?.id;
             const authorName = getCommentAuthorName(comment, user?.id);
             const isSelectedOwnComment = selectedOwnCommentId === comment.id;
+            const highlightRanges = assistantHighlightRangesByCommentId[comment.id] ?? [];
 
             return (
               <article
@@ -607,14 +851,18 @@ export default function CommentSection(props: CommentSectionProps)
                     </button>
                   ) : null}
                 </div>
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-text">{comment.text}</p>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-text">
+                  {renderCommentText(comment.text, highlightRanges)}
+                </p>
               </article>
             );
           })
         ) : (
           <div
             className="rounded-3xl border border-dashed border-border/80 bg-background/20 p-6 text-sm leading-6 text-muted">
-            No comments yet. Be the first person to weigh in on this {getContentType(isEpisodeRoute, titleType)}.
+            {isAssistantSearchActive
+              ? `No comments matched "${assistantSearchTopic}". Cancel the search to return to the full discussion.`
+              : `No comments yet. Be the first person to weigh in on this ${getContentType(isEpisodeRoute, titleType)}.`}
           </div>
         )}
       </div>
