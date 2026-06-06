@@ -1,10 +1,7 @@
 import {useDispatch} from "react-redux";
-import type {AppDispatch} from "../store";
-import {useAuth} from "../../features/auth/services/AuthProvider";
 import {useEffect, useMemo, useRef, useState} from "react";
 import type {AppDispatch} from "../../../app/store";
 import {useAuth} from "../../auth/services/AuthProvider";
-import {useEffect, useMemo, useState} from "react";
 import {
   commentApi,
   useDeleteCommentMutation,
@@ -21,7 +18,8 @@ import {TitleType} from "../../titles-details/models/TitleType.ts";
 import {
   useGetRelevantEpisodeCommentsMutation,
   useGetRelevantTitleCommentsMutation
-} from "../api/assistantApi";
+} from "../api/assistantApi.ts";
+
 
 function PenIcon()
 {
@@ -321,6 +319,7 @@ export default function CommentSection(props: CommentSectionProps)
           },
         });
 
+      debugger;
       pendingAssistantSearchRef.current = request;
       const highlights = await request.unwrap();
 

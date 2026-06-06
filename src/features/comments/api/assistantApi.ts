@@ -1,4 +1,4 @@
-import { baseApi } from './baseApi.ts';
+import { baseApi } from '../../../app/api/baseApi.ts';
 
 export interface RelevantCommentRequest {
   topic: string;
