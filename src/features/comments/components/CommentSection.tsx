@@ -1,6 +1,7 @@
 import {useDispatch} from "react-redux";
 import {useEffect, useMemo, useRef, useState} from "react";
 import type {AppDispatch} from "../../../app/store";
+import {API_BASE_URL} from "../../../app/api/baseApi.ts";
 import {useAuth} from "../../auth/services/AuthProvider";
 import {
   commentApi,
@@ -29,6 +30,45 @@ function PenIcon()
       <path strokeLinecap="round" strokeLinejoin="round" d="m13.5 6.5 4 4"/>
     </svg>
   );
+}
+
+function getCommentAuthorInitials(authorName: string)
+{
+  const initials = authorName
+    .split(/\s+/)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return initials || 'WU';
+}
+
+function getCommentAuthorProfilePicture(comment: {
+  user?: {
+    profilePicture?: string | null;
+    ProfilePicture?: string | null;
+  } | null;
+})
+{
+  const profilePicture = comment.user?.profilePicture ?? comment.user?.ProfilePicture;
+  if (!profilePicture?.trim())
+  {
+    return null;
+  }
+
+  const trimmedProfilePicture = profilePicture.trim();
+  if (
+    trimmedProfilePicture.startsWith('http://') ||
+    trimmedProfilePicture.startsWith('https://') ||
+    trimmedProfilePicture.startsWith('data:') ||
+    trimmedProfilePicture.startsWith('blob:')
+  )
+  {
+    return trimmedProfilePicture;
+  }
+
+  return `${API_BASE_URL}${trimmedProfilePicture.startsWith('/') ? '' : '/'}${trimmedProfilePicture}`;
 }
 
 type HighlightRange = {
@@ -319,7 +359,6 @@ export default function CommentSection(props: CommentSectionProps)
           },
         });
 
-      debugger;
       pendingAssistantSearchRef.current = request;
       const highlights = await request.unwrap();
 
@@ -645,7 +684,7 @@ export default function CommentSection(props: CommentSectionProps)
                   {displayedComments.length} relevant comment{displayedComments.length === 1 ? '' : 's'}
                 </Badge>
                 <p className="text-sm text-muted">
-                  Showing results for "{assistantSearchTopic}"
+                  Showing results for &quot;{assistantSearchTopic}&quot;
                 </p>
               </>
             ) : (
@@ -815,6 +854,8 @@ export default function CommentSection(props: CommentSectionProps)
           {
             const isOwnComment = comment.userId === user?.id;
             const authorName = getCommentAuthorName(comment, user?.id);
+            const authorProfilePicture = getCommentAuthorProfilePicture(comment);
+            const authorInitials = getCommentAuthorInitials(authorName);
             const isSelectedOwnComment = selectedOwnCommentId === comment.id;
             const highlightRanges = assistantHighlightRangesByCommentId[comment.id] ?? [];
 
@@ -831,12 +872,31 @@ export default function CommentSection(props: CommentSectionProps)
                   .join(' ')}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-text">{authorName}</h3>
-                      {isOwnComment ? <Badge tone="accent">You</Badge> : null}
-                      {isSelectedOwnComment ? <Badge tone="warning">Selected</Badge> : null}
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-surface-raised text-sm font-semibold text-primary">
+                        <span>{authorInitials}</span>
+                        {authorProfilePicture ? (
+                          <img
+                            src={authorProfilePicture}
+                            alt={`${authorName} profile picture`}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
+                            onError={event => {
+                              event.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-semibold text-text">{authorName}</h3>
+                          {isOwnComment ? <Badge tone="accent">You</Badge> : null}
+                          {isSelectedOwnComment ? <Badge tone="warning">Selected</Badge> : null}
+                        </div>
+                        <p className="mt-1 text-sm text-muted">{formatCommentDate(comment.updatedAt)}</p>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-muted">{formatCommentDate(comment.updatedAt)}</p>
                   </div>
                   {isOwnComment ? (
                     <button

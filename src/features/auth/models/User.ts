@@ -5,5 +5,6 @@ export type User = {
   userName?: string | null;
   userRoles: string[];
   profilePicture?: string | null;
+  ProfilePicture?: string | null;
   role?: string | null;
 };
